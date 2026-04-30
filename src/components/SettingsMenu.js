@@ -56,20 +56,20 @@ const SettingsMenu = ({ isOpen, onClose }) => {
         ]}
       >
         {/* Tab Switcher */}
-        <View className={`flex-row mx-8 mt-8 p-1 rounded-2xl ${isDarkMode ? 'bg-slate-900' : 'bg-slate-100'}`}>
+        <View className={`flex-row mx-6 mt-6 p-1 rounded-2xl ${isDarkMode ? 'bg-slate-900' : 'bg-slate-100'}`}>
           <Pressable 
             onPress={() => setActiveTab('history')}
-            className={`flex-1 flex-row items-center justify-center py-3 rounded-xl gap-2 ${activeTab === 'history' ? (isDarkMode ? 'bg-slate-800' : 'bg-white shadow-sm') : ''}`}
+            className={`flex-1 flex-row items-center justify-center py-2.5 rounded-xl gap-2 ${activeTab === 'history' ? (isDarkMode ? 'bg-slate-800' : 'bg-white shadow-sm') : ''}`}
           >
-            <History size={18} color={activeTab === 'history' ? (isDarkMode ? 'white' : '#3b82f6') : (isDarkMode ? '#64748b' : '#94a3b8')} />
-            <Text className={`font-bold ${activeTab === 'history' ? (isDarkMode ? 'text-white' : 'text-slate-900') : (isDarkMode ? 'text-slate-500' : 'text-slate-400')}`}>History</Text>
+            <History size={16} color={activeTab === 'history' ? (isDarkMode ? 'white' : '#3b82f6') : (isDarkMode ? '#64748b' : '#94a3b8')} />
+            <Text className={`font-semibold ${activeTab === 'history' ? (isDarkMode ? 'text-white' : 'text-slate-900') : (isDarkMode ? 'text-slate-500' : 'text-slate-400')}`}>History</Text>
           </Pressable>
           <Pressable 
             onPress={() => setActiveTab('menu')}
-            className={`flex-1 flex-row items-center justify-center py-3 rounded-xl gap-2 ${activeTab === 'menu' ? (isDarkMode ? 'bg-slate-800' : 'bg-white shadow-sm') : ''}`}
+            className={`flex-1 flex-row items-center justify-center py-2.5 rounded-xl gap-2 ${activeTab === 'menu' ? (isDarkMode ? 'bg-slate-800' : 'bg-white shadow-sm') : ''}`}
           >
-            <Settings size={18} color={activeTab === 'menu' ? (isDarkMode ? 'white' : '#3b82f6') : (isDarkMode ? '#64748b' : '#94a3b8')} />
-            <Text className={`font-bold ${activeTab === 'menu' ? (isDarkMode ? 'text-white' : 'text-slate-900') : (isDarkMode ? 'text-slate-500' : 'text-slate-400')}`}>Menu</Text>
+            <Settings size={16} color={activeTab === 'menu' ? (isDarkMode ? 'white' : '#3b82f6') : (isDarkMode ? '#64748b' : '#94a3b8')} />
+            <Text className={`font-semibold ${activeTab === 'menu' ? (isDarkMode ? 'text-white' : 'text-slate-900') : (isDarkMode ? 'text-slate-500' : 'text-slate-400')}`}>Settings</Text>
           </Pressable>
         </View>
 
@@ -79,8 +79,8 @@ const SettingsMenu = ({ isOpen, onClose }) => {
           onStartShouldSetResponder={() => true}
           style={styles.innerContent}
         >
-          {activeTab === 'history' ? (
-            <View style={{ height: 240 }}>
+          <View style={{ height: 240 }}>
+            {activeTab === 'history' ? (
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
                 {history.length > 0 ? (
                   history.slice(0, 5).map((item) => (
@@ -114,63 +114,68 @@ const SettingsMenu = ({ isOpen, onClose }) => {
                   </View>
                 )}
               </ScrollView>
-            </View>
-          ) : (
-            <>
-              {/* Dark Mode Toggle */}
-              <View className="flex-row justify-between items-center mb-8">
-                <View className="flex-row items-center gap-4">
-                  {isDarkMode ? <Moon size={22} color="white" /> : <Sun size={22} color="#0f172a" />}
-                  <Text className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Dark Mode</Text>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+                {/* Dark Mode Toggle */}
+                <View className="flex-row justify-between items-center mb-6">
+                  <View className="flex-row items-center gap-3">
+                    {isDarkMode ? <Moon size={20} color="white" /> : <Sun size={20} color="#0f172a" />}
+                    <Text className={`text-base font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Dark Mode</Text>
+                  </View>
+                  <Switch
+                    value={isDarkMode}
+                    onValueChange={toggleDarkMode}
+                    trackColor={{ false: '#cbd5e1', true: '#3b82f6' }}
+                    thumbColor="#fff"
+                    ios_backgroundColor="#cbd5e1"
+                    style={{ transform: [{ scale: 0.8 }] }}
+                  />
                 </View>
-                <Switch
-                  value={isDarkMode}
-                  onValueChange={toggleDarkMode}
-                  trackColor={{ false: '#cbd5e1', true: '#3b82f6' }}
-                  thumbColor="#fff"
-                  ios_backgroundColor="#cbd5e1"
-                />
-              </View>
 
-              {/* Font Size Slider */}
-              <View className="mb-8">
-                <View className="flex-row items-center gap-4 mb-4">
-                  <Type size={22} color={isDarkMode ? 'white' : '#0f172a'} />
-                  <Text className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Typography</Text>
-                </View>
-                <Slider
-                  style={{ width: '100%', height: 40 }}
-                  minimumValue={0.8}
-                  maximumValue={1.5}
-                  value={fontSizeScale}
-                  onValueChange={setFontSizeScale}
-                  minimumTrackTintColor="#3b82f6"
-                  maximumTrackTintColor={isDarkMode ? '#334155' : '#e2e8f0'}
-                  thumbTintColor="#3b82f6"
-                />
-              </View>
+                {/* Spacer to push sliders to the bottom */}
+                <View style={{ flex: 1 }} />
 
-              {/* Thumbnail Size Slider */}
-              <View className="mb-2">
-                <View className="flex-row items-center gap-4 mb-4">
-                  <ImageIcon size={22} color={isDarkMode ? 'white' : '#0f172a'} />
-                  <Text className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Thumbnails</Text>
+                {/* Font Size Slider */}
+                <View className="mb-6">
+                  <View className="flex-row items-center gap-3 mb-2">
+                    <Type size={20} color={isDarkMode ? 'white' : '#0f172a'} />
+                    <Text className={`text-base font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Typography</Text>
+                  </View>
+                  <Slider
+                    style={{ width: '100%', height: 32 }}
+                    minimumValue={0.8}
+                    maximumValue={1.5}
+                    value={fontSizeScale}
+                    onValueChange={setFontSizeScale}
+                    minimumTrackTintColor="#3b82f6"
+                    maximumTrackTintColor={isDarkMode ? '#334155' : '#e2e8f0'}
+                    thumbTintColor="#3b82f6"
+                  />
                 </View>
-                <Slider
-                  style={{ width: '100%', height: 40 }}
-                  minimumValue={0.5}
-                  maximumValue={1.5}
-                  value={thumbnailScale}
-                  onValueChange={setThumbnailScale}
-                  minimumTrackTintColor="#3b82f6"
-                  maximumTrackTintColor={isDarkMode ? '#334155' : '#e2e8f0'}
-                  thumbTintColor="#3b82f6"
-                />
-              </View>
-            </>
-          )}
+
+                {/* Thumbnail Size Slider */}
+                <View className="mb-2">
+                  <View className="flex-row items-center gap-3 mb-2">
+                    <ImageIcon size={20} color={isDarkMode ? 'white' : '#0f172a'} />
+                    <Text className={`text-base font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Thumbnails</Text>
+                  </View>
+                  <Slider
+                    style={{ width: '100%', height: 32 }}
+                    minimumValue={0.5}
+                    maximumValue={1.5}
+                    value={thumbnailScale}
+                    onValueChange={setThumbnailScale}
+                    minimumTrackTintColor="#3b82f6"
+                    maximumTrackTintColor={isDarkMode ? '#334155' : '#e2e8f0'}
+                    thumbTintColor="#3b82f6"
+                  />
+                </View>
+              </ScrollView>
+            )}
+          </View>
         </Pressable>
       </Animated.View>
+
     </>
   );
 };
@@ -200,7 +205,7 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
   },
   innerContent: {
-    padding: 32,
+    padding: 24,
     width: '100%',
   },
   lightContainer: {
