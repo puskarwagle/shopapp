@@ -67,6 +67,7 @@ export default function CustomersScreen() {
         <Search size={20} color={isDarkMode ? '#94a3b8' : '#64748b'} />
         <TextInput
           className={`flex-1 ml-3 text-base ${isDarkMode ? 'text-white' : 'text-slate-800'}`}
+          style={{ outlineStyle: 'none' }}
           placeholder="Filter by name..."
           placeholderTextColor={isDarkMode ? '#64748b' : '#94a3b8'}
           value={search}

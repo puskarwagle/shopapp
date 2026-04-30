@@ -14,6 +14,7 @@ const MOCK_PRODUCTS = [
 export default function CheckoutScreen() {
   const { activeCustomer, cart, addToCart, removeFromCart, clearCart, isDarkMode, fontSizeScale, thumbnailScale } = useStore();
   const [showSummary, setShowSummary] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const [dueAmount, setDueAmount] = useState('0');
 
   const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2);
@@ -24,7 +25,7 @@ export default function CheckoutScreen() {
   };
 
   const handleFinishCheckout = () => {
-    alert(`Checkout complete for ${activeCustomer.name}!\nTotal: Rs. ${total}\nDue: Rs. ${dueAmount}`);
+    setShowSuccess(true);
     clearCart();
     setShowSummary(false);
     setDueAmount('0');
@@ -178,6 +179,7 @@ export default function CheckoutScreen() {
                 className={`p-4 rounded-xl text-lg border ${
                   isDarkMode ? 'bg-black border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
                 }`}
+                style={{ outlineStyle: 'none' }}
                 keyboardType="numeric"
                 value={dueAmount}
                 onChangeText={setDueAmount}
@@ -189,6 +191,29 @@ export default function CheckoutScreen() {
               className="bg-blue-600 p-5 rounded-2xl items-center shadow-lg"
             >
               <Text className="text-white font-bold text-xl" style={{ fontSize: 20 * fontSizeScale }}>Confirm Checkout</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Success Modal */}
+      <Modal visible={showSuccess} animationType="fade" transparent={true}>
+        <View className="flex-1 bg-black/60 items-center justify-center p-6">
+          <View className={`w-full max-w-sm rounded-3xl p-8 items-center shadow-2xl ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`}>
+            <View className="w-20 h-20 bg-green-100 rounded-full items-center justify-center mb-6">
+              <CheckCircle2 size={48} color="#22c55e" />
+            </View>
+            <Text className={`text-2xl font-bold text-center mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+              Checkout Complete!
+            </Text>
+            <Text className={`text-center mb-8 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+              Order has been processed successfully.
+            </Text>
+            <TouchableOpacity 
+              onPress={() => setShowSuccess(false)}
+              className="bg-blue-600 w-full p-4 rounded-xl items-center"
+            >
+              <Text className="text-white font-bold text-lg">Back to Store</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -31,6 +31,7 @@ export default function LoginScreen() {
             className={`p-4 rounded-xl border ${
               isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
             }`}
+            style={{ outlineStyle: 'none' }}
             placeholder="email@example.com"
             placeholderTextColor={isDarkMode ? '#475569' : '#94a3b8'}
             value={email}
@@ -46,6 +47,7 @@ export default function LoginScreen() {
             className={`p-4 rounded-xl border ${
               isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
             }`}
+            style={{ outlineStyle: 'none' }}
             placeholder="••••••••"
             placeholderTextColor={isDarkMode ? '#475569' : '#94a3b8'}
             value={password}

@@ -149,6 +149,7 @@ export default function InventoryScreen() {
                     className={`p-4 rounded-xl border ${
                       isDarkMode ? 'bg-black border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
                     }`}
+                    style={{ outlineStyle: 'none' }}
                     placeholder="e.g. Fresh Milk"
                     placeholderTextColor={isDarkMode ? '#475569' : '#94a3b8'}
                     value={newProduct.name}
@@ -163,6 +164,7 @@ export default function InventoryScreen() {
                       className={`p-4 rounded-xl border ${
                         isDarkMode ? 'bg-black border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
                       }`}
+                      style={{ outlineStyle: 'none' }}
                       placeholder="0"
                       placeholderTextColor={isDarkMode ? '#475569' : '#94a3b8'}
                       keyboardType="numeric"
@@ -176,6 +178,7 @@ export default function InventoryScreen() {
                       className={`p-4 rounded-xl border ${
                         isDarkMode ? 'bg-black border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
                       }`}
+                      style={{ outlineStyle: 'none' }}
                       placeholder="0"
                       placeholderTextColor={isDarkMode ? '#475569' : '#94a3b8'}
                       keyboardType="numeric"
