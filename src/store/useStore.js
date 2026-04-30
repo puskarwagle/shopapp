@@ -19,6 +19,11 @@ const useStore = create(
       activeCustomer: null,
       setActiveCustomer: (customer) => set({ activeCustomer: customer }),
       
+      history: [],
+      addToHistory: (order) => set((state) => ({ 
+        history: [{ ...order, id: Date.now().toString(), timestamp: new Date().toISOString() }, ...state.history].slice(0, 50) 
+      })),
+
       cart: [], // { id, name, price, quantity }
       addToCart: (product) => set((state) => {
         const existing = state.cart.find(item => item.id === product.id);
@@ -48,6 +53,7 @@ const useStore = create(
         fontSizeScale: state.fontSizeScale,
         thumbnailScale: state.thumbnailScale,
         cart: state.cart,
+        history: state.history,
       }),
     }
   )

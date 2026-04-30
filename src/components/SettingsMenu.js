@@ -1,15 +1,19 @@
-import React from 'react';
-import { View, Text, Switch, StyleSheet, Pressable } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Switch, StyleSheet, Pressable, ScrollView } from 'react-native';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import Slider from '@react-native-community/slider';
-import { Moon, Sun, Type, Image as ImageIcon } from 'lucide-react-native';
+import { Moon, Sun, Type, Image as ImageIcon, History, Settings, ChevronRight, ExternalLink } from 'lucide-react-native';
 import useStore from '../store/useStore';
+import { useNavigation } from '@react-navigation/native';
 
 const SettingsMenu = ({ isOpen, onClose }) => {
+  const navigation = useNavigation();
+  const [activeTab, setActiveTab] = useState('history'); // 'history' or 'menu'
   const { 
     isDarkMode, toggleDarkMode, 
     fontSizeScale, setFontSizeScale, 
-    thumbnailScale, setThumbnailScale 
+    thumbnailScale, setThumbnailScale,
+    history 
   } = useStore();
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -27,6 +31,11 @@ const SettingsMenu = ({ isOpen, onClose }) => {
       opacity: withTiming(isOpen ? 1 : 0, { duration: 200 }),
     };
   });
+
+  const handleFullHistory = () => {
+    onClose();
+    navigation.navigate('History');
+  };
 
   return (
     <>
@@ -46,62 +55,120 @@ const SettingsMenu = ({ isOpen, onClose }) => {
           { pointerEvents: isOpen ? 'auto' : 'none' }
         ]}
       >
+        {/* Tab Switcher */}
+        <View className={`flex-row mx-8 mt-8 p-1 rounded-2xl ${isDarkMode ? 'bg-slate-900' : 'bg-slate-100'}`}>
+          <Pressable 
+            onPress={() => setActiveTab('history')}
+            className={`flex-1 flex-row items-center justify-center py-3 rounded-xl gap-2 ${activeTab === 'history' ? (isDarkMode ? 'bg-slate-800' : 'bg-white shadow-sm') : ''}`}
+          >
+            <History size={18} color={activeTab === 'history' ? (isDarkMode ? 'white' : '#3b82f6') : (isDarkMode ? '#64748b' : '#94a3b8')} />
+            <Text className={`font-bold ${activeTab === 'history' ? (isDarkMode ? 'text-white' : 'text-slate-900') : (isDarkMode ? 'text-slate-500' : 'text-slate-400')}`}>History</Text>
+          </Pressable>
+          <Pressable 
+            onPress={() => setActiveTab('menu')}
+            className={`flex-1 flex-row items-center justify-center py-3 rounded-xl gap-2 ${activeTab === 'menu' ? (isDarkMode ? 'bg-slate-800' : 'bg-white shadow-sm') : ''}`}
+          >
+            <Settings size={18} color={activeTab === 'menu' ? (isDarkMode ? 'white' : '#3b82f6') : (isDarkMode ? '#64748b' : '#94a3b8')} />
+            <Text className={`font-bold ${activeTab === 'menu' ? (isDarkMode ? 'text-white' : 'text-slate-900') : (isDarkMode ? 'text-slate-500' : 'text-slate-400')}`}>Menu</Text>
+          </Pressable>
+        </View>
+
         {/* Stop propagation to prevent closing while interacting with sliders */}
         <Pressable 
           onPress={(e) => e && e.stopPropagation && e.stopPropagation()} 
           onStartShouldSetResponder={() => true}
           style={styles.innerContent}
         >
-          {/* Dark Mode Toggle */}
-          <View className="flex-row justify-between items-center mb-8">
-            <View className="flex-row items-center gap-4">
-              {isDarkMode ? <Moon size={22} color="white" /> : <Sun size={22} color="#0f172a" />}
-              <Text className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Dark Mode</Text>
+          {activeTab === 'history' ? (
+            <View style={{ maxHeight: 400 }}>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                {history.length > 0 ? (
+                  history.slice(0, 5).map((item) => (
+                    <Pressable 
+                      key={item.id} 
+                      onPress={handleFullHistory}
+                      className={`p-4 mb-3 rounded-2xl border active:opacity-70 ${isDarkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-slate-50 border-slate-100'}`}
+                    >
+                      <View className="flex-row justify-between items-center mb-1">
+                        <Text className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`} numberOfLines={1}>
+                          {item.customerName}
+                        </Text>
+                        <Text className="text-blue-500 font-bold">Rs. {item.total.toFixed(2)}</Text>
+                      </View>
+                      <View className="flex-row justify-between items-center">
+                        <Text className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                          {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                        <View className="flex-row items-center gap-1">
+                          <Text className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                            {item.items.length} items
+                          </Text>
+                          <ChevronRight size={12} color={isDarkMode ? '#475569' : '#cbd5e1'} />
+                        </View>
+                      </View>
+                    </Pressable>
+                  ))
+                ) : (
+                  <View className="items-center py-8">
+                    <Text className={isDarkMode ? 'text-slate-600' : 'text-slate-400'}>No recent transactions</Text>
+                  </View>
+                )}
+              </ScrollView>
             </View>
-            <Switch
-              value={isDarkMode}
-              onValueChange={toggleDarkMode}
-              trackColor={{ false: '#cbd5e1', true: '#3b82f6' }}
-              thumbColor="#fff"
-              ios_backgroundColor="#cbd5e1"
-            />
-          </View>
+          ) : (
+            <>
+              {/* Dark Mode Toggle */}
+              <View className="flex-row justify-between items-center mb-8">
+                <View className="flex-row items-center gap-4">
+                  {isDarkMode ? <Moon size={22} color="white" /> : <Sun size={22} color="#0f172a" />}
+                  <Text className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Dark Mode</Text>
+                </View>
+                <Switch
+                  value={isDarkMode}
+                  onValueChange={toggleDarkMode}
+                  trackColor={{ false: '#cbd5e1', true: '#3b82f6' }}
+                  thumbColor="#fff"
+                  ios_backgroundColor="#cbd5e1"
+                />
+              </View>
 
-          {/* Font Size Slider */}
-          <View className="mb-8">
-            <View className="flex-row items-center gap-4 mb-4">
-              <Type size={22} color={isDarkMode ? 'white' : '#0f172a'} />
-              <Text className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Typography</Text>
-            </View>
-            <Slider
-              style={{ width: '100%', height: 40 }}
-              minimumValue={0.8}
-              maximumValue={1.5}
-              value={fontSizeScale}
-              onValueChange={setFontSizeScale}
-              minimumTrackTintColor="#3b82f6"
-              maximumTrackTintColor={isDarkMode ? '#334155' : '#e2e8f0'}
-              thumbTintColor="#3b82f6"
-            />
-          </View>
+              {/* Font Size Slider */}
+              <View className="mb-8">
+                <View className="flex-row items-center gap-4 mb-4">
+                  <Type size={22} color={isDarkMode ? 'white' : '#0f172a'} />
+                  <Text className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Typography</Text>
+                </View>
+                <Slider
+                  style={{ width: '100%', height: 40 }}
+                  minimumValue={0.8}
+                  maximumValue={1.5}
+                  value={fontSizeScale}
+                  onValueChange={setFontSizeScale}
+                  minimumTrackTintColor="#3b82f6"
+                  maximumTrackTintColor={isDarkMode ? '#334155' : '#e2e8f0'}
+                  thumbTintColor="#3b82f6"
+                />
+              </View>
 
-          {/* Thumbnail Size Slider */}
-          <View className="mb-2">
-            <View className="flex-row items-center gap-4 mb-4">
-              <ImageIcon size={22} color={isDarkMode ? 'white' : '#0f172a'} />
-              <Text className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Thumbnails</Text>
-            </View>
-            <Slider
-              style={{ width: '100%', height: 40 }}
-              minimumValue={0.5}
-              maximumValue={1.5}
-              value={thumbnailScale}
-              onValueChange={setThumbnailScale}
-              minimumTrackTintColor="#3b82f6"
-              maximumTrackTintColor={isDarkMode ? '#334155' : '#e2e8f0'}
-              thumbTintColor="#3b82f6"
-            />
-          </View>
+              {/* Thumbnail Size Slider */}
+              <View className="mb-2">
+                <View className="flex-row items-center gap-4 mb-4">
+                  <ImageIcon size={22} color={isDarkMode ? 'white' : '#0f172a'} />
+                  <Text className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Thumbnails</Text>
+                </View>
+                <Slider
+                  style={{ width: '100%', height: 40 }}
+                  minimumValue={0.5}
+                  maximumValue={1.5}
+                  value={thumbnailScale}
+                  onValueChange={setThumbnailScale}
+                  minimumTrackTintColor="#3b82f6"
+                  maximumTrackTintColor={isDarkMode ? '#334155' : '#e2e8f0'}
+                  thumbTintColor="#3b82f6"
+                />
+              </View>
+            </>
+          )}
         </Pressable>
       </Animated.View>
     </>
@@ -133,7 +200,7 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
   },
   innerContent: {
-    padding: 40,
+    padding: 32,
     width: '100%',
   },
   lightContainer: {

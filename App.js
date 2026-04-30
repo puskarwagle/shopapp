@@ -11,6 +11,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import InventoryScreen from './src/screens/InventoryScreen';
 import CustomersScreen from './src/screens/CustomersScreen';
 import CheckoutScreen from './src/screens/CheckoutScreen';
+import HistoryScreen from './src/screens/HistoryScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import useStore from './src/store/useStore';
 import SettingsMenu from './src/components/SettingsMenu';
@@ -127,7 +128,10 @@ export default function App() {
           {!user ? (
             <Stack.Screen name="Login" component={LoginScreen} />
           ) : (
-            <Stack.Screen name="Main" component={MainTabs} />
+            <>
+              <Stack.Screen name="Main" component={MainTabs} />
+              <Stack.Screen name="History" component={HistoryScreen} options={{ animation: 'slide_from_bottom' }} />
+            </>
           )}
         </Stack.Navigator>
         <StatusBar style={isDarkMode ? 'light' : 'dark'} />

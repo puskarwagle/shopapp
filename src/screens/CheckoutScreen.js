@@ -12,7 +12,7 @@ const MOCK_PRODUCTS = [
 ];
 
 export default function CheckoutScreen() {
-  const { activeCustomer, cart, addToCart, removeFromCart, clearCart, isDarkMode, fontSizeScale, thumbnailScale } = useStore();
+  const { user, activeCustomer, cart, addToCart, removeFromCart, clearCart, addToHistory, isDarkMode, fontSizeScale, thumbnailScale } = useStore();
   const [showSummary, setShowSummary] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [dueAmount, setDueAmount] = useState('0');
@@ -25,6 +25,15 @@ export default function CheckoutScreen() {
   };
 
   const handleFinishCheckout = () => {
+    // Add to history
+    addToHistory({
+      customerName: activeCustomer.name,
+      total: parseFloat(total),
+      dueAmount: parseFloat(dueAmount) || 0,
+      items: cart.map(item => ({ name: item.name, quantity: item.quantity, price: item.price })),
+      processedBy: user?.email || 'Unknown',
+    });
+
     setShowSuccess(true);
     clearCart();
     setShowSummary(false);
