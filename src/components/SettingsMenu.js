@@ -80,8 +80,8 @@ const SettingsMenu = ({ isOpen, onClose }) => {
           style={styles.innerContent}
         >
           {activeTab === 'history' ? (
-            <View style={{ maxHeight: 400 }}>
-              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+            <View style={{ height: 240 }}>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
                 {history.length > 0 ? (
                   history.slice(0, 5).map((item) => (
                     <Pressable 

@@ -41,7 +41,8 @@ const useStore = create(
           item.id === productId ? { ...item, quantity: Math.max(0, item.quantity - 1) } : item
         ).filter(item => item.quantity > 0)
       })),
-      clearCart: () => set({ cart: [], activeCustomer: null }),
+      clearCart: () => set({ cart: [] }),
+      clearSession: () => set({ cart: [], activeCustomer: null }),
     }),
     {
       name: 'shop-app-storage',

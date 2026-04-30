@@ -12,7 +12,7 @@ const MOCK_PRODUCTS = [
 ];
 
 export default function CheckoutScreen() {
-  const { user, activeCustomer, cart, addToCart, removeFromCart, clearCart, addToHistory, isDarkMode, fontSizeScale, thumbnailScale } = useStore();
+  const { user, activeCustomer, setActiveCustomer, cart, addToCart, removeFromCart, clearCart, clearSession, addToHistory, isDarkMode, fontSizeScale, thumbnailScale } = useStore();
   const [showSummary, setShowSummary] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [dueAmount, setDueAmount] = useState('0');
@@ -121,7 +121,7 @@ export default function CheckoutScreen() {
           <Text className={isDarkMode ? 'text-slate-600 text-xs' : 'text-slate-500 text-xs'} style={{ fontSize: 10 * fontSizeScale }}>Customer</Text>
           <Text className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`} style={{ fontSize: 16 * fontSizeScale }}>{activeCustomer.name}</Text>
         </View>
-        <TouchableOpacity onPress={clearCart}>
+        <TouchableOpacity onPress={clearSession}>
           <X size={20} color="#ef4444" />
         </TouchableOpacity>
       </View>
@@ -137,11 +137,11 @@ export default function CheckoutScreen() {
       {/* Floating Total Bar */}
       {total > 0 && (
         <View className={`absolute bottom-24 left-6 right-6 rounded-2xl p-4 flex-row justify-between items-center shadow-2xl ${
-          isDarkMode ? 'bg-slate-900 border border-slate-800' : 'bg-slate-900'
+          isDarkMode ? 'bg-slate-900 border border-slate-800' : 'bg-white border border-slate-100'
         }`}>
           <View>
-            <Text className="text-slate-400 text-xs uppercase font-bold tracking-widest" style={{ fontSize: 10 * fontSizeScale }}>Total</Text>
-            <Text className="text-white text-2xl font-bold" style={{ fontSize: 24 * fontSizeScale }}>Rs. {total}</Text>
+            <Text className={isDarkMode ? 'text-slate-500 text-xs uppercase font-bold tracking-widest' : 'text-slate-400 text-xs uppercase font-bold tracking-widest'} style={{ fontSize: 10 * fontSizeScale }}>Total</Text>
+            <Text className={isDarkMode ? 'text-white text-2xl font-bold' : 'text-slate-900 text-2xl font-bold'} style={{ fontSize: 24 * fontSizeScale }}>Rs. {total}</Text>
           </View>
           <TouchableOpacity 
             onPress={() => setShowSummary(true)}
@@ -219,7 +219,10 @@ export default function CheckoutScreen() {
               Order has been processed successfully.
             </Text>
             <TouchableOpacity 
-              onPress={() => setShowSuccess(false)}
+              onPress={() => {
+                setShowSuccess(false);
+                setActiveCustomer(null);
+              }}
               className="bg-blue-600 w-full p-4 rounded-xl items-center"
             >
               <Text className="text-white font-bold text-lg">Back to Store</Text>
