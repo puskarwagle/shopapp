@@ -199,10 +199,6 @@ const styles = StyleSheet.create({
     borderRadius: 48,
     // Modern shadow approach for RN/Web
     boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
   },
   innerContent: {
     padding: 24,

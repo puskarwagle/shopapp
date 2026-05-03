@@ -33,7 +33,7 @@ function MainTabs() {
           headerStyle: {
             backgroundColor: isDarkMode ? '#020617' : '#fff',
             elevation: 0,
-            shadowOpacity: 0,
+            boxShadow: 'none',
             borderBottomWidth: 1,
             borderBottomColor: isDarkMode ? '#1e293b' : '#f1f5f9',
           },
@@ -51,7 +51,7 @@ function MainTabs() {
             left: 0,
             right: 0,
             elevation: 0,
-            shadowOpacity: 0,
+            boxShadow: 'none',
           },
         }}
       >
