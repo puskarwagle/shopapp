@@ -1,21 +1,48 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import useStore from '../store/useStore';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { deriveRole } from '../lib/auth';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const { setUser, isDarkMode } = useStore();
 
-  const handleLogin = () => {
-    // Basic logic: if email contains 'admin', set role to admin
-    // In real app, this will be handled by Supabase Auth
-    const role = email.toLowerCase().includes('admin') ? 'admin' : 'employee';
-    setUser({ email, role });
+  const handleLogin = async () => {
+    if (!email.trim() || !password.trim()) {
+      setError('Enter your email and password.');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      if (!isSupabaseConfigured) {
+        // Fallback for local dev without keys: any credentials, role from email
+        setUser({ email, role: deriveRole(email) });
+        return;
+      }
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+      if (authError) {
+        setError(authError.message || 'Invalid credentials.');
+        return;
+      }
+      const signedInEmail = data?.user?.email || email;
+      setUser({ email: signedInEmail, role: deriveRole(signedInEmail) });
+    } catch (e) {
+      setError('Could not reach the server. Check your connection.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className={`flex-1 justify-center px-8 ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`}
     >
@@ -56,11 +83,20 @@ export default function LoginScreen() {
           />
         </View>
 
-        <TouchableOpacity 
+        {error !== '' && (
+          <Text className="text-red-500 text-center mb-2">{error}</Text>
+        )}
+
+        <TouchableOpacity
           className="bg-blue-600 p-4 rounded-xl mt-4 active:bg-blue-700 shadow-lg"
           onPress={handleLogin}
+          disabled={loading}
         >
-          <Text className="text-white text-center font-bold text-lg">Login</Text>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text className="text-white text-center font-bold text-lg">Login</Text>
+          )}
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

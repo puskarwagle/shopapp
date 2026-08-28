@@ -15,6 +15,8 @@ import HistoryScreen from './src/screens/HistoryScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import useStore from './src/store/useStore';
 import SettingsMenu from './src/components/SettingsMenu';
+import { supabase } from './src/lib/supabase';
+import { deriveRole } from './src/lib/auth';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -119,7 +121,19 @@ const styles = StyleSheet.create({
 });
 
 export default function App() {
-  const { user, isDarkMode } = useStore();
+  const { user, isDarkMode, setUser, pullAll } = useStore();
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const email = session?.user?.email || null;
+      setUser(email ? { email, role: deriveRole(email) } : null);
+    });
+    return () => subscription.unsubscribe();
+  }, [setUser]);
+
+  useEffect(() => {
+    if (user?.email) pullAll();
+  }, [user?.email]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

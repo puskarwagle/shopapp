@@ -1,55 +1,66 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, Image } from 'react-native';
-import { Search, UserPlus } from 'lucide-react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, Image, Modal } from 'react-native';
+import { Search, UserPlus, X } from 'lucide-react-native';
 import useStore from '../store/useStore';
 import { useNavigation } from '@react-navigation/native';
 
-const MOCK_CUSTOMERS = [
-  { id: 'other', name: 'Other / Walk-in', image: 'https://via.placeholder.com/150/f1f5f9/64748b?text=Other' },
-  { id: '1', name: 'John Doe', image: 'https://i.pravatar.cc/150?u=1', due: 50 },
-  { id: '2', name: 'Jane Smith', image: 'https://i.pravatar.cc/150?u=2', due: 0 },
-  { id: '3', name: 'Bob Wilson', image: 'https://i.pravatar.cc/150?u=3', due: 120 },
-  { id: '4', name: 'Alice Brown', image: 'https://i.pravatar.cc/150?u=4', due: 0 },
-  { id: '5', name: 'Charlie Davis', image: 'https://i.pravatar.cc/150?u=5', due: 15 },
-];
+const WALK_IN = { id: 'other', name: 'Other / Walk-in', image: 'https://via.placeholder.com/150/f1f5f9/64748b?text=Other' };
 
 export default function CustomersScreen() {
   const [search, setSearch] = useState('');
-  const { setActiveCustomer, isDarkMode, fontSizeScale, thumbnailScale } = useStore();
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newDue, setNewDue] = useState('');
+  const { customers, addCustomer, setActiveCustomer, isDarkMode, fontSizeScale, thumbnailScale } = useStore();
   const navigation = useNavigation();
 
-  const filteredCustomers = MOCK_CUSTOMERS.filter(c => 
+  const filteredCustomers = customers.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase())
   );
+
+  const displayList = search.trim() === '' ? [WALK_IN, ...filteredCustomers] : filteredCustomers;
 
   const handleSelectCustomer = (customer) => {
     setActiveCustomer(customer);
     navigation.navigate('Checkout');
   };
 
+  const handleAddCustomer = () => {
+    const name = newName.trim();
+    if (!name) return;
+    addCustomer({
+      name,
+      due: parseFloat(newDue) || 0,
+      image: 'https://via.placeholder.com/150/f1f5f9/64748b?text=' + encodeURIComponent(name.charAt(0).toUpperCase()),
+    });
+    setNewName('');
+    setNewDue('');
+    setShowAddModal(false);
+  };
+
   const renderItem = ({ item }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       className={`flex-1 m-2 rounded-2xl shadow-sm border overflow-hidden ${
         isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'
       }`}
       onPress={() => handleSelectCustomer(item)}
       style={{ transform: [{ scale: thumbnailScale }] }}
     >
-      <Image 
-        source={{ uri: item.image }} 
+      <Image
+        source={{ uri: item.image }}
         className="w-full aspect-square"
       />
       <View className="p-3 flex-row justify-between items-center">
-        <Text 
-          className={`font-bold flex-1 mr-2 ${isDarkMode ? 'text-white' : 'text-slate-800'}`} 
+        <Text
+          className={`font-bold flex-1 mr-2 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}
           style={{ fontSize: 14 * fontSizeScale }}
           numberOfLines={1}
         >
           {item.name}
         </Text>
         {item.due > 0 && (
-          <Text 
-            className="text-red-500 font-bold" 
+          <Text
+            className="text-red-500 font-bold"
             style={{ fontSize: 12 * fontSizeScale }}
           >
             Rs. {item.due}
@@ -76,20 +87,65 @@ export default function CustomersScreen() {
       </View>
 
       <FlatList
-        data={filteredCustomers}
+        data={displayList}
         renderItem={renderItem}
         keyExtractor={item => item.id}
         numColumns={2}
         contentContainerStyle={{ paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
       />
-      
-      <TouchableOpacity 
+
+      <TouchableOpacity
         className="absolute bottom-40 right-6 bg-blue-600 w-14 h-14 rounded-full items-center justify-center shadow-lg"
-        onPress={() => {/* Add customer logic */}}
+        onPress={() => setShowAddModal(true)}
       >
         <UserPlus size={28} color="white" />
       </TouchableOpacity>
+
+      <Modal visible={showAddModal} animationType="slide" transparent={true}>
+        <View className="flex-1 bg-black/80 justify-end">
+          <View className={`rounded-t-3xl p-6 ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`}>
+            <View className="flex-row justify-between items-center mb-6">
+              <Text className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>New Customer</Text>
+              <TouchableOpacity onPress={() => setShowAddModal(false)}>
+                <X size={24} color={isDarkMode ? '#94a3b8' : '#64748b'} />
+              </TouchableOpacity>
+            </View>
+
+            <Text className={`font-medium mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-700'}`}>Name</Text>
+            <TextInput
+              className={`p-4 rounded-xl border mb-4 ${
+                isDarkMode ? 'bg-black border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
+              }`}
+              style={{ outlineStyle: 'none' }}
+              placeholder="e.g. Mike Smith"
+              placeholderTextColor={isDarkMode ? '#475569' : '#94a3b8'}
+              value={newName}
+              onChangeText={setNewName}
+            />
+
+            <Text className={`font-medium mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-700'}`}>Due (Rs., if any)</Text>
+            <TextInput
+              className={`p-4 rounded-xl border mb-8 ${
+                isDarkMode ? 'bg-black border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
+              }`}
+              style={{ outlineStyle: 'none' }}
+              placeholder="0"
+              placeholderTextColor={isDarkMode ? '#475569' : '#94a3b8'}
+              keyboardType="numeric"
+              value={newDue}
+              onChangeText={setNewDue}
+            />
+
+            <TouchableOpacity
+              onPress={handleAddCustomer}
+              className="bg-blue-600 p-5 rounded-2xl items-center shadow-lg"
+            >
+              <Text className="text-white font-bold text-xl">Add Customer</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

@@ -1,19 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, Modal, TextInput, ScrollView } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, Modal, TextInput, ScrollView, Alert } from 'react-native';
 import { Plus, Camera, Image as ImageIcon, X, Trash2 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import useStore from '../store/useStore';
 
-const MOCK_PRODUCTS = [
-  { id: 'p1', name: 'Milk', price: 2.5, stock: 20, image: 'https://images.unsplash.com/photo-1563636619-e9107da5a165?w=200&h=200&fit=crop' },
-  { id: 'p2', name: 'Bread', price: 1.8, stock: 15, image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=200&h=200&fit=crop' },
-];
-
 export default function InventoryScreen() {
-  const [products, setProducts] = useState(MOCK_PRODUCTS);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newProduct, setNewProduct] = useState({ name: '', price: '', stock: '', image: null });
-  const { isDarkMode, fontSizeScale, thumbnailScale } = useStore();
+  const { products, addProduct, deleteProduct, isDarkMode, fontSizeScale, thumbnailScale } = useStore();
 
   const pickImage = async (useCamera = false) => {
     let result;
@@ -39,15 +33,21 @@ export default function InventoryScreen() {
 
   const handleAddProduct = () => {
     const product = {
-      ...newProduct,
-      id: Date.now().toString(),
+      name: newProduct.name,
       price: parseFloat(newProduct.price),
       stock: parseInt(newProduct.stock),
       image: newProduct.image || 'https://via.placeholder.com/150/f1f5f9/64748b?text=Product'
     };
-    setProducts([product, ...products]);
+    addProduct(product);
     setShowAddModal(false);
     setNewProduct({ name: '', price: '', stock: '', image: null });
+  };
+
+  const confirmDelete = (product) => {
+    Alert.alert('Delete Product', `Remove "${product.name}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteProduct(product.id) },
+    ]);
   };
 
   const renderProduct = ({ item }) => (
@@ -70,7 +70,7 @@ export default function InventoryScreen() {
           <Text className="text-blue-500 font-semibold" style={{ fontSize: 13 * fontSizeScale }}>Rs. {item.price.toFixed(2)}</Text>
           <Text className={isDarkMode ? 'text-slate-500 text-xs' : 'text-slate-400 text-xs'}>Stock: {item.stock}</Text>
         </View>
-        <TouchableOpacity className="mt-2 items-end">
+        <TouchableOpacity className="mt-2 items-end" onPress={() => confirmDelete(item)}>
           <Trash2 size={16} color="#ef4444" />
         </TouchableOpacity>
       </View>
@@ -85,6 +85,13 @@ export default function InventoryScreen() {
         keyExtractor={item => item.id}
         numColumns={2}
         contentContainerStyle={{ padding: 8, paddingBottom: 100 }}
+        ListEmptyComponent={
+          <View className="items-center pt-24">
+            <Text className={isDarkMode ? 'text-slate-600' : 'text-slate-400'} style={{ fontSize: 16 * fontSizeScale }}>
+              No products yet. Tap + to add one.
+            </Text>
+          </View>
+        }
       />
 
       <TouchableOpacity 

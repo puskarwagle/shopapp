@@ -2,11 +2,13 @@
 /node_modules
 /.pnp
 .pnp.js
+bun.lock
 
 # expo
 .expo/
 dist/
 web-build/
+
 
 # development
 .env

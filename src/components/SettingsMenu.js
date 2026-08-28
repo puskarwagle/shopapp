@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Switch, StyleSheet, Pressable, ScrollView } from 'react-native';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import Slider from '@react-native-community/slider';
-import { Moon, Sun, Type, Image as ImageIcon, History, Settings, ChevronRight, ExternalLink } from 'lucide-react-native';
+import { Moon, Sun, Type, Image as ImageIcon, History, Settings, ChevronRight, ExternalLink, LogOut } from 'lucide-react-native';
 import useStore from '../store/useStore';
 import { useNavigation } from '@react-navigation/native';
 
@@ -13,7 +13,8 @@ const SettingsMenu = ({ isOpen, onClose }) => {
     isDarkMode, toggleDarkMode, 
     fontSizeScale, setFontSizeScale, 
     thumbnailScale, setThumbnailScale,
-    history 
+    history,
+    logout
   } = useStore();
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -170,6 +171,15 @@ const SettingsMenu = ({ isOpen, onClose }) => {
                     thumbTintColor="#3b82f6"
                   />
                 </View>
+
+                <Pressable
+                  onPress={() => { onClose(); logout(); }}
+                  className="mt-6 flex-row items-center justify-center gap-2 p-4 rounded-2xl border active:opacity-70"
+                  style={{ borderColor: 'rgba(239,68,68,0.3)' }}
+                >
+                  <LogOut size={18} color="#ef4444" />
+                  <Text className="font-bold text-red-500">Log Out</Text>
+                </Pressable>
               </ScrollView>
             )}
           </View>

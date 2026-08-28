@@ -2,17 +2,10 @@ import React, { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, Modal, TextInput } from 'react-native';
 import { Minus, X, CheckCircle2 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import useStore from '../store/useStore';
-
-const MOCK_PRODUCTS = [
-  { id: 'p1', name: 'Milk', price: 2.5, stock: 20, image: 'https://images.unsplash.com/photo-1563636619-e9107da5a165?w=200&h=200&fit=crop' },
-  { id: 'p2', name: 'Bread', price: 1.8, stock: 15, image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=200&h=200&fit=crop' },
-  { id: 'p3', name: 'Eggs (12pc)', price: 4.5, stock: 10, image: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=200&h=200&fit=crop' },
-  { id: 'p4', name: 'Butter', price: 3.2, stock: 8, image: 'https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=200&h=200&fit=crop' },
-];
+import useStore, { uid } from '../store/useStore';
 
 export default function CheckoutScreen() {
-  const { user, activeCustomer, setActiveCustomer, cart, addToCart, removeFromCart, clearCart, clearSession, addToHistory, isDarkMode, fontSizeScale, thumbnailScale } = useStore();
+  const { user, activeCustomer, setActiveCustomer, cart, addToCart, removeFromCart, clearCart, clearSession, addToHistory, pushTransaction, isDarkMode, fontSizeScale, thumbnailScale, products } = useStore();
   const [showSummary, setShowSummary] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [dueAmount, setDueAmount] = useState('0');
@@ -25,14 +18,19 @@ export default function CheckoutScreen() {
   };
 
   const handleFinishCheckout = () => {
-    // Add to history
-    addToHistory({
+    const now = new Date().toISOString();
+    const order = {
+      id: uid(),
+      customerId: activeCustomer.id,
       customerName: activeCustomer.name,
       total: parseFloat(total),
       dueAmount: parseFloat(dueAmount) || 0,
       items: cart.map(item => ({ name: item.name, quantity: item.quantity, price: item.price })),
       processedBy: user?.email || 'Unknown',
-    });
+      timestamp: now,
+    };
+    addToHistory(order);
+    pushTransaction(order);
 
     setShowSuccess(true);
     clearCart();
@@ -127,7 +125,7 @@ export default function CheckoutScreen() {
       </View>
 
       <FlatList
-        data={MOCK_PRODUCTS}
+        data={products}
         renderItem={renderProduct}
         keyExtractor={item => item.id}
         numColumns={2}
