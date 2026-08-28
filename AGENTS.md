@@ -12,7 +12,7 @@ Mobile-first grocery shop management app built with React Native (Expo SDK 54) +
 - **Navigation:** `@react-navigation/native` + bottom-tabs + native-stack
 - **Styling:** NativeWind (Tailwind classes via `className`) + `StyleSheet.create` + `expo-linear-gradient` for overlays
 - **State:** Zustand store with `persist` middleware (AsyncStorage on native, key `shop-app-storage`)
-- **Backend:** Supabase (`supabase-js`). Auth (email/password via `supabase.auth`) + offline-first data sync are wired. A project is created, the GitHub repo is linked on the dashboard for DB migrations, and `supabase/migrations/` exists (applied automatically on merge to `main`).
+- **Backend:** Supabase (`supabase-js`). Auth (Google Sign-In via `@react-native-google-signin/google-signin` on native, OAuth redirect on web) + offline-first data sync. A project is created, the GitHub repo is linked on the dashboard for DB migrations, and `supabase/migrations/` exists (applied automatically on merge to `main`).
 - **Animations:** React Native Reanimated, `@react-native-community/slider`
 - **Icons:** `lucide-react-native`
 
@@ -24,9 +24,11 @@ Mobile-first grocery shop management app built with React Native (Expo SDK 54) +
 
 There is **no lint script and no test suite** in `package.json`. Don't invent one; if verification is needed, start the app (`npm run web`) or do a syntax sanity check.
 
-## Android APK Build & Install (always via GitHub Actions)
+## Android APK Build & Install
 
-Production installs are **only** built by CI — never locally (`eas build` is not configured; the old `.github/workflows/eas-build.yml` path does not exist).
+`eas build` is NOT configured (the old `.github/workflows/eas-build.yml` path does not exist). Two working paths, both producing a debug-signed APK:
+
+### 1. GitHub Actions (default, slow ~20-25 min)
 
 Workflow: `.github/workflows/build-android.yml`
 
@@ -35,12 +37,21 @@ Workflow: `.github/workflows/build-android.yml`
 - **Preconditions for a successful build:**
   - `app.json` MUST define `android.package` (currently `com.puskarwagle.shopapp`). `expo prebuild` fails in CI without it.
   - `package-lock.json` must exist (workflow uses `npm ci` — note this even though `bun.lock` is the local lockfile; `bun.lock` is gitignored).
+- Result: artifact **`shopapp-release-apk`** → `app-release.apk` (~46 MB), downloadable from the run's Artifacts section.
 
-Result: artifact **`shopapp-release-apk`** → `app-release.apk` (~45 MB), downloadable from the run's Artifacts section. It's debug-signed — fine for personal sideloading, not Play Store material.
+### 2. Local (faster, needs Android Studio/SDK + JDK 17)
+
+- `npx expo prebuild --platform android --no-install` then `cd android && ./gradlew assembleRelease`.
+- Output: `android/app/build/outputs/apk/release/app-release.apk`. The `android/` folder is gitignored (regenerated each time).
+- Local `.env` (EXPO_PUBLIC_*) is inlined into the bundle; `src/lib/config.js` values are used when env is absent.
+
+### Web / quick testing
+
+- `npm run web` — no build required; the primary daily dev loop.
 
 Build etiquette when changing app code:
 - Never bump the app version or re-run a build unless asked; the same artifact name is uploaded each run.
-- If Supabase env vars are ever required at build time, they must be added as GitHub **Actions secrets** and passed to the prebuild/build step (see `src/lib/supabase.js`), since `.env` is gitignored and not present in CI.
+- Future **Play Store** release needs a real production keystore (release-signing config) — current debug-signed APK is for personal sideloading only. Also plan: public signup → gate roles via the `profiles` table (see below) instead of email-derived roles.
 
 ## Key Conventions
 
@@ -49,16 +60,44 @@ Build etiquette when changing app code:
 - **Currency:** Use `Rs.` formatting (e.g. `Rs. {value.toFixed(2)}`), never `$`.
 - **State persistence:** Only state listed in the `partialize` function of `useStore.js` survives reloads. Add new persisted fields there deliberately.
 - **Scaled text/images:** UI consumes `fontSizeScale` and `thumbnailScale` from the store; text always uses `style={{ fontSize: N * fontSizeScale }}`.
-- **Mock data lives in the screens**: `MOCK_PRODUCTS` (CheckoutScreen, InventoryScreen), `MOCK_CUSTOMERS` (CustomersScreen). There is no database layer.
+- **Data lives in the store + Supabase**: products/customers/transactions are loaded into `useStore` (offline-first) and synced to Supabase tables (see Offline-First Sync below). There are no hardcoded mock lists anymore.
 
 ## Auth / Login (Supabase)
 
-`src/screens/LoginScreen.js` authenticates via `supabase.auth.signInWithPassword` (accounts created in the Supabase dashboard → Authentication → Users). Role is derived from the email:
+`src/screens/LoginScreen.js` authenticates via Google Sign-In only. On native, `@react-native-google-signin/google-signin` obtains a Google ID token natively, passed to `supabase.auth.signInWithIdToken()`. On web, `supabase.auth.signInWithOAuth()` opens a browser-based Google OAuth flow. The `onAuthStateChange` listener in `App.js` handles session detection and profile loading.
 
-- Email containing `admin` (case-insensitive) → role `'admin'` (full access, adds Inventory tab) — see `src/lib/auth.js` `deriveRole()`
-- Any other email → role `'employee'` (Customers + Checkout only)
+One `profiles` row exists per user (auto-created by a trigger — see `supabase/migrations/0002_profiles.sql`):
 
-If Supabase isn't configured (missing keys in `src/lib/config.js`), login falls back to the old mock behavior (no password check). Keep `App.js` (`isAdmin = user?.role === 'admin'` + Inventory tab) consistent if role logic changes.
+- Role comes from the `profiles.role` column (default `'employee'`). Set it to `'admin'` (full access, adds Inventory tab) in Table Editor.
+- If the profile lookup fails (offline/new user), `deriveRole(email)` in `src/lib/auth.js` falls back — email containing `admin` → admin, else employee. Keep `App.js` (`isAdmin = user?.role === 'admin'` + Inventory tab) consistent if role logic changes.
+- If Supabase isn't configured (missing keys in `src/lib/config.js`), login shows an offline mode message.
+
+### Google OAuth Setup
+
+- **Google Cloud Console:** Web OAuth client (redirect URI: `https://<supabase-project>.supabase.co/auth/v1/callback`) + Android OAuth client (package: `com.puskarwagle.shopapp`).
+- **Supabase Dashboard:** Authentication → Providers → Google → Enabled with Web Client ID + Secret. Redirect URLs must include the app origin (e.g. `http://localhost:8081`).
+- **`src/lib/config.js`:** Contains `GOOGLE_WEB_CLIENT_ID` (public, not a secret).
+- Native builds require the `@react-native-google-signin/google-signin` Expo plugin in `app.json`.
+
+## Multi-Shop Onboarding (tenant model)
+
+Each shop is an isolated tenant. App flow:
+
+1. **First launch / no account** → `LoginScreen` → user creates account + shop name (becomes **owner/admin**). Also available: "Sign In" for existing accounts.
+2. **Signed in, no shop** → `ConnectShopScreen` → employee scans the owner's QR code or types a 6-character invite code to join the shop; or creates a new shop if they're the owner.
+3. **Signed in + has shop** → `MainTabs` (Customers / Checkout / Inventory if admin).
+
+Schema (`supabase/migrations/0003_shops.sql`):
+- `shops` table (id, name unique, invite_code unique, owner_id, created_at)
+- `products`, `customers`, `transactions` rows tagged with `shop_id`
+- `profiles.shop_id` — set when user joins/creates a shop
+- RLS scoped to `(select shop_id from profiles where id = auth.uid())` — users only ever see their own shop's data
+
+Owner invite flow:
+- `SettingsMenu` Settings tab shows **Invite Employees** panel (admin only) with the shop's invite code + QR
+- Employee opens the app → scans QR / enters code → joins the shop as employee
+
+For family/testing: you and Dad both create accounts; one of you creates a shop, the other scans the QR or types the code.
 
 ## Offline-First Sync (how data flows)
 
@@ -75,5 +114,5 @@ Entry: `index.js` → `App.js` (stack: Login or Main tabs). Tabs: Customers, Men
 
 - `App.js` uses a dummy `Tab.Screen name="Menu"` with a custom `tabBarButton` — do not convert it to a real screen.
 - `SettingsMenu.js` handles its own `isOpen` state via props; overlay + scale/translate animations controlled by Reanimated `withTiming`.
-- Supabase env vars (`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`) are read in `src/lib/supabase.js` but empty by default — don't rely on them for behavior, and never commit real secrets.
+- Supabase keys are baked into `src/lib/config.js` (committed on purpose — the URL + anon key are public by design; RLS + auth protect the data). `.env` may override for local dev but is NOT needed, and never commit real secrets beyond these public keys.
 - Do not add runtime comments unless asked; match the existing terse, comment-minimal style.

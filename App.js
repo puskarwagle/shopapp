@@ -13,10 +13,11 @@ import CustomersScreen from './src/screens/CustomersScreen';
 import CheckoutScreen from './src/screens/CheckoutScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import LoginScreen from './src/screens/LoginScreen';
+import ConnectShopScreen from './src/screens/ConnectShopScreen';
 import useStore from './src/store/useStore';
 import SettingsMenu from './src/components/SettingsMenu';
-import { supabase } from './src/lib/supabase';
-import { deriveRole } from './src/lib/auth';
+import { supabase, isSupabaseConfigured } from './src/lib/supabase';
+import { ensureProfile, deriveRole, configureGoogleSignIn } from './src/lib/auth';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -64,10 +65,10 @@ function MainTabs() {
             tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
           }}
         />
-        
+
         <Tab.Screen
           name="Menu"
-          component={View} // Dummy component
+          component={View}
           options={{
             tabBarButton: () => (
               <View className="flex-1 items-center justify-center">
@@ -96,7 +97,7 @@ function MainTabs() {
             tabBarIcon: ({ color, size }) => <ShoppingCart color={color} size={size} />,
           }}
         />
-        
+
         {isAdmin && (
           <Tab.Screen
             name="Inventory"
@@ -107,7 +108,7 @@ function MainTabs() {
           />
         )}
       </Tab.Navigator>
-      
+
       <SettingsMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
     </View>
   );
@@ -121,19 +122,32 @@ const styles = StyleSheet.create({
 });
 
 export default function App() {
-  const { user, isDarkMode, setUser, pullAll } = useStore();
+  const { user, shopId, isDarkMode, setUser, setShopId, pullAll } = useStore();
 
   useEffect(() => {
+    configureGoogleSignIn();
+  }, []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const email = session?.user?.email || null;
-      setUser(email ? { email, role: deriveRole(email) } : null);
+      const u = session?.user;
+      if (!u) {
+        setUser(null);
+        setShopId(null, null);
+        return;
+      }
+      ensureProfile(u.id, u.email).then((prof) => {
+        setUser({ id: u.id, email: u.email, role: prof?.role || deriveRole(u.email) });
+        setShopId(prof?.shop_id || null, null);
+      });
     });
     return () => subscription.unsubscribe();
-  }, [setUser]);
+  }, [setUser, setShopId]);
 
   useEffect(() => {
-    if (user?.email) pullAll();
-  }, [user?.email]);
+    if (user?.email && shopId && shopId !== 'local') pullAll();
+  }, [user?.email, shopId]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -141,6 +155,8 @@ export default function App() {
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           {!user ? (
             <Stack.Screen name="Login" component={LoginScreen} />
+          ) : !shopId ? (
+            <Stack.Screen name="Connect" component={ConnectShopScreen} />
           ) : (
             <>
               <Stack.Screen name="Main" component={MainTabs} />

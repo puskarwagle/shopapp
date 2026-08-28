@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, Switch, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { View, Text, Switch, StyleSheet, Pressable, ScrollView, Platform } from 'react-native';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import Slider from '@react-native-community/slider';
-import { Moon, Sun, Type, Image as ImageIcon, History, Settings, ChevronRight, ExternalLink, LogOut } from 'lucide-react-native';
+import { Moon, Sun, Type, Image as ImageIcon, History, Settings, ChevronRight, ExternalLink, LogOut, Store, Copy } from 'lucide-react-native';
 import useStore from '../store/useStore';
 import { useNavigation } from '@react-navigation/native';
+
+let QRCode = null;
+if (Platform.OS !== 'web') {
+  try { QRCode = require('react-native-qrcode-svg').default; } catch (_) {}
+}
 
 const SettingsMenu = ({ isOpen, onClose }) => {
   const navigation = useNavigation();
@@ -14,7 +19,10 @@ const SettingsMenu = ({ isOpen, onClose }) => {
     fontSizeScale, setFontSizeScale, 
     thumbnailScale, setThumbnailScale,
     history,
-    logout
+    logout,
+    user,
+    shopName,
+    shopInviteCode,
   } = useStore();
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -171,6 +179,39 @@ const SettingsMenu = ({ isOpen, onClose }) => {
                     thumbTintColor="#3b82f6"
                   />
                 </View>
+
+                {/* Invite Panel — admin/owner only */}
+                {user?.role === 'admin' && shopInviteCode && (
+                  <View className={`p-4 rounded-2xl border mb-4 ${isDarkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
+                    <View className="flex-row items-center gap-2 mb-3">
+                      <Store size={16} color="#3b82f6" />
+                      <Text className="font-bold text-blue-500">Invite Employees</Text>
+                    </View>
+                    {shopName && (
+                      <Text className={`mb-2 text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Shop: {shopName}</Text>
+                    )}
+                    <View className="items-center mb-3">
+                      {QRCode ? (
+                        <QRCode value={shopInviteCode} size={140} backgroundColor="transparent" />
+                      ) : (
+                        <Text className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>QR works on phone only</Text>
+                      )}
+                    </View>
+                    <Text className={`text-center text-xs mb-2 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                      Share this code or scan the QR
+                    </Text>
+                    <View className={`flex-row items-center justify-center gap-2 p-3 rounded-xl ${isDarkMode ? 'bg-slate-800' : 'bg-white border border-slate-200'}`}>
+                      <Text className="text-xl font-bold tracking-widest text-blue-500">{shopInviteCode}</Text>
+                      {Platform.OS !== 'web' && (
+                        <Pressable onPress={() => {
+                          try { require('expo-clipboard').setStringAsync(shopInviteCode); } catch (_) {}
+                        }}>
+                          <Copy size={16} color={isDarkMode ? '#94a3b8' : '#64748b'} />
+                        </Pressable>
+                      )}
+                    </View>
+                  </View>
+                )}
 
                 <Pressable
                   onPress={() => { onClose(); logout(); }}

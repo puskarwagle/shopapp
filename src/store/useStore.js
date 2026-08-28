@@ -6,11 +6,24 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 export const uid = () =>
   Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
+const genInviteCode = () => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+};
+
+const IMAGE_PLACEHOLDER = 'https://via.placeholder.com/150/f1f5f9/64748b?text=P';
+
 const useStore = create(
   persist(
     (set, get) => ({
-      user: null, // { email, role }
+      user: null, // { id, email, role }
       setUser: (user) => set({ user }),
+
+      // Current shop (tenant). Empty until the user creates/joins one.
+      shopId: null,
+      shopName: null,
+      shopInviteCode: null,
+      setShopId: (shopId, shopName) => set({ shopId, shopName }),
 
       isDarkMode: false,
       toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
@@ -55,12 +68,65 @@ const useStore = create(
       isSyncing: false,
       lastSyncedAt: null,
 
+      createShop: async (name) => {
+        if (!isSupabaseConfigured) {
+          set({ shopId: 'local', shopName: name || 'Local Shop', shopInviteCode: 'LOCAL' });
+          return { ok: true };
+        }
+        const clean = (name || '').trim();
+        if (!clean) return { ok: false, error: 'Enter a shop name.' };
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return { ok: false, error: 'Not signed in.' };
+        const shopId = uid();
+        const inviteCode = genInviteCode();
+        const { error } = await supabase.from('shops').insert({
+          id: shopId, name: clean, invite_code: inviteCode, owner_id: user.id,
+        });
+        if (error) return { ok: false, error: error.message };
+        await supabase.from('profiles').upsert(
+          { id: user.id, email: user.email, shop_id: shopId, role: 'admin' },
+          { onConflict: 'id' }
+        );
+        set({
+          shopId,
+          shopName: clean,
+          shopInviteCode: inviteCode,
+          user: { ...get().user, id: user.id, email: user.email, role: 'admin' },
+        });
+        return { ok: true };
+      },
+
+      joinShop: async (code) => {
+        if (!isSupabaseConfigured) {
+          set({ shopId: 'local', shopName: 'Local Shop' });
+          return { ok: true };
+        }
+        const clean = (code || '').trim().toUpperCase();
+        if (!clean) return { ok: false, error: 'Enter the invite code from the QR.' };
+        const { data: shop, error } = await supabase
+          .from('shops')
+          .select('id, name')
+          .eq('invite_code', clean)
+          .maybeSingle();
+        if (error || !shop) return { ok: false, error: 'No shop found for that code.' };
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase.from('profiles').update({ shop_id: shop.id }).eq('id', user.id);
+          const { data: prof } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle();
+          if (prof?.role) set((s) => ({ user: { ...s.user, role: prof.role } }));
+        }
+        set({ shopId: shop.id, shopName: shop.name });
+        return { ok: true };
+      },
+
       addProduct: (product) => {
-        const row = { ...product, id: product.id || uid(), updated_at: new Date().toISOString() };
+        if (!get().shopId) return;
+        const row = { ...product, id: product.id || uid(), shop_id: get().shopId, updated_at: new Date().toISOString() };
         set((state) => ({ products: [row, ...state.products] }));
         get().enqueueSync({ table: 'products', op: 'upsert', row });
       },
       updateProduct: (productId, patch) => {
+        if (!get().shopId) return;
         set((state) => ({
           products: state.products.map(p =>
             p.id === productId ? { ...p, ...patch, updated_at: new Date().toISOString() } : p
@@ -77,16 +143,19 @@ const useStore = create(
         get().enqueueSync({ table: 'products', op: 'delete', row: { id: productId } });
       },
       addCustomer: (customer) => {
-        const row = { ...customer, id: customer.id || uid() };
+        if (!get().shopId) return;
+        const row = { ...customer, id: customer.id || uid(), shop_id: get().shopId };
         set((state) => ({ customers: [row, ...state.customers] }));
         get().enqueueSync({ table: 'customers', op: 'upsert', row });
       },
       pushTransaction: (order) => {
+        if (!get().shopId) return;
         get().enqueueSync({
           table: 'transactions',
           op: 'upsert',
           row: {
             id: order.id,
+            shop_id: get().shopId,
             customer_id: order.customerId,
             customer_name: order.customerName,
             total: order.total,
@@ -124,7 +193,10 @@ const useStore = create(
         });
       },
       pullAll: async () => {
-        if (!isSupabaseConfigured) return;
+        if (!isSupabaseConfigured || !get().shopId) {
+          if (get().shopId === 'local') { set({ isSyncing: false }); return; }
+          return;
+        }
         set({ isSyncing: true });
         try {
           await get().flushSync();
@@ -171,7 +243,15 @@ const useStore = create(
         if (isSupabaseConfigured) {
           await supabase.auth.signOut();
         }
-        set({ user: null, cart: [], activeCustomer: null, syncQueue: [] });
+        set({
+          user: null,
+          cart: [],
+          activeCustomer: null,
+          shopId: null,
+          shopName: null,
+          shopInviteCode: null,
+          syncQueue: [],
+        });
       },
     }),
     {
@@ -179,6 +259,9 @@ const useStore = create(
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         user: state.user,
+        shopId: state.shopId,
+        shopName: state.shopName,
+        shopInviteCode: state.shopInviteCode,
         activeCustomer: state.activeCustomer,
         isDarkMode: state.isDarkMode,
         fontSizeScale: state.fontSizeScale,
