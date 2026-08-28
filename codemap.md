@@ -27,9 +27,11 @@ App.js                        → Root: NavigationContainer + native-stack
 | `babel.config.js`, `metro.config.js`, `tailwind.config.js` | NativeWind + build config |
 | `global.css` | NativeWind CSS entry (imported in `App.js`); includes desktop phone-frame styling (430px constrained viewport, dark mode bezel) |
 | `modernization-plan.md` | UI/UX roadmap and CI deployment plan |
-| `.github/workflows/eas-build.yml` | CI: Expo EAS build (Android/iOS) on push to `main` |
+| `.github/workflows/build-android.yml` | CI: Android APK build (`assembleRelease`, debug-signed) on push/PR to `main` |
 | `patches/` | Patch files applied via `patch-package` (runs automatically on `npm install`) |
 | `fastoextract/` | Fasto product extraction + catalog seeding scripts (not part of app runtime) |
+
+Versioning: `app.json` + `package.json` hold the semver `version` (`0.2.0`). Store builds also bump `android.versionCode` / `ios.buildNumber` (both must increment per release; keep `version` and build numbers in sync in the same commit).
 
 ## src/ — Application Code
 

@@ -54,6 +54,22 @@ Build etiquette when changing app code:
 - Never bump the app version or re-run a build unless asked; the same artifact name is uploaded each run.
 - Future **Play Store** release needs a real production keystore (release-signing config) — current debug-signed APK is for personal sideloading only. Also plan: public signup → gate roles via the `profiles` table (see below) instead of email-derived roles.
 
+## Versioning
+
+App version follows **semantic versioning** (`MAJOR.MINOR.PATCH`), tracked in `package.json` and `app.json` (keep both in sync):
+
+- **MAJOR** — breaking changes (`1.0.0`, `2.0.0`, ...)
+- **MINOR** — new features (`0.3.0`, `0.4.0`, ...)
+- **PATCH** — bug fixes (`0.2.1`, `0.2.2`, ...)
+
+Pre-1.0 apps start at `0.x.y`; we're currently on `0.2.0`.
+
+For mobile store builds, every release must also bump the store-facing build numbers:
+- **Android:** `app.json` → `expo.android.versionCode` — an integer that **must strictly increment** with each build (Google Play rejects duplicates). Start at 1, add +1 per release.
+- **iOS:** `app.json` → `expo.ios.buildNumber` (string, e.g. `"1"`) — same rule.
+
+Rule of thumb: on every release commit, bump `version` + the store build number(s) **together** in the same commit.
+
 ## Key Conventions
 
 - **Files are CommonJS-style ES modules**: plain `.js`, `import`/`export default`, no `.jsx`/`.tsx`.

@@ -1,74 +1,91 @@
 # Grocery Shop App
 
-A mobile-first, image-centric management application for small grocery shops. Built with React Native (Expo) and Supabase, it allows shop owners and employees to manage inventory, handle checkouts, and track customer dues with a simple, thumbnail-based interface.
+Mobile-first grocery shop management app built with React Native (Expo) + Supabase. Shop owners and employees manage inventory, customer dues, and checkouts through an image-centric, thumbnail-based UI. Works offline and syncs to the cloud. Runs on Android, iOS, and web.
 
-## 🚀 Features
+## Features
 
--   **Mobile-First UI:** Optimized for touch interactions with large, gallery-style thumbnails and a modern "squircle" (squared circle) design language.
--   **Customizable Experience:** Real-time adjustments for **Dark Mode**, **Typography** scaling, and **Thumbnail** sizes via a polished settings menu.
--   **Role-Based Access:**
-    -   **Admin:** Full access to Inventory management, Customers, and Checkout.
-    -   **Employee:** Access limited to Customers and Checkout only.
--   **Customer Management:** Image-grid of customers with live filtering and "Walk-in" support.
--   **Due Tracking:** Keep track of customers who will "pay later" directly at the checkout summary.
--   **Inventory Management (Admin):** Add/Edit/Delete products with image support (Camera/Gallery) and stock tracking.
--   **Web Support:** Develop and test directly in the browser using Expo Web.
+- **Multi-shop onboarding** — each shop is an isolated tenant. The owner creates a shop; employees join by scanning a QR code or typing a 6-character invite code.
+- **Google Sign-In** — auth via Google OAuth (native SDK on mobile, browser redirect on web).
+- **Customers** — image-grid of customers with live filtering, "walk-in" entry, and due tracking.
+- **Checkout** — tap product thumbnails to add to cart, settle with partial payments, track "pay later" dues, and see a full transaction history.
+- **Inventory (admin)** — manage products with photos and stock. Add via **Browse Catalog** (a global ~400-product reference catalog scraped from Fasto, searchable by category) or **Add Custom Product** (camera/gallery).
+- **Offline-first sync** — all reads/writes hit a local Zustand store persisted to AsyncStorage; background sync queues push to Supabase and retry failures on next login.
+- **Customizable UI** — dark mode, typography scaling, and thumbnail size from the settings menu.
+- **Desktop-friendly web dev** — the web build renders inside a phone-sized frame so it looks and behaves like the mobile app.
 
-## 🛠 Tech Stack
+## Tech Stack
 
--   **Frontend:** React Native with [Expo](https://expo.dev/)
--   **Styling:** [NativeWind](https://www.nativewind.dev/) & React Native StyleSheet
--   **Animations:** [React Native Reanimated](https://docs.swmansion.com/react-native-reanimated/)
--   **State Management:** [Zustand](https://github.com/pmndrs/zustand)
--   **Backend:** [Supabase](https://supabase.com/) (Auth, PostgreSQL, Storage)
--   **Icons:** Lucide React Native
+| Layer | Tech |
+| --- | --- |
+| Frontend | React Native 0.81, Expo SDK ~54 (plain `.js`, no TypeScript) |
+| Navigation | `@react-navigation/native` (bottom-tabs + native-stack) |
+| Styling | NativeWind (Tailwind classes), React Native StyleSheet, `expo-linear-gradient` |
+| State | Zustand with `persist` middleware (AsyncStorage, key `shop-app-storage`) |
+| Backend | Supabase (auth, PostgreSQL, RLS, offline-first sync) |
+| Animations | React Native Reanimated, `@react-native-community/slider` |
+| Icons | `lucide-react-native` |
 
-## 📋 Getting Started
+## Getting Started
 
 ### Prerequisites
 
--   Node.js (LTS)
--   npm or yarn
+- Node.js (LTS) + npm
+- A Supabase project (auth + Postgres) with the migrations from `supabase/migrations/` applied (or the GitHub integration pointing at this repo — migrations apply on merge to `main`).
 
-### Installation
+### Install
 
-1.  Clone the repository:
-    ```bash
-    git clone <your-repo-url>
-    cd shopapp
-    ```
-
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
-
-3.  Set up environment variables:
-    Create a `.env` file in the root directory and add your Supabase credentials:
-    ```env
-    EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
-    EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-    ```
-
-### Running the App
-
-Run the development server for the web:
 ```bash
-npx expo start --web
+git clone <your-repo-url>
+cd shopapp
+npm install   # also runs patch-package via postinstall
 ```
 
-To test on a physical device, download the **Expo Go** app and scan the QR code displayed in the terminal.
+### Run
 
-## 👥 User Roles (Development Logic)
-
-Currently, user roles are determined by the login email:
--   **Admin:** Any email containing the word `admin` (e.g., `admin@shop.com`).
--   **Employee:** Any other valid email.
-
-## 📦 Deployment
-
-This app is ready to be built into an Android APK or iOS app using **EAS Build**:
 ```bash
-# Example for Android
-eas build --platform android --profile preview
+npm run web       # browser (primary dev loop — phone frame on desktop)
+npm start         # Expo dev server
+npm run android   # expo run:android (device/emulator)
+npm run ios       # expo run:ios
 ```
+
+Supabase keys live in `src/lib/config.js` (committed on purpose — URL + anon key are public; RLS + auth protect the data). For local overrides, set `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` in a `.env` file.
+
+## User Roles
+
+Roles are stored in the `profiles.role` column (default `'employee'`; set to `'admin'` for full access incl. the Inventory tab). If the profile lookup fails offline, `deriveRole(email)` in `src/lib/auth.js` falls back to email-based inference (`admin` in the address → admin) — this is a fallback only, not the source of truth.
+
+## Building an Android APK
+
+`eas build` is **not** configured. Two working paths (both debug-signed, ~46 MB):
+
+1. **GitHub Actions** — push to `main` / PR to `main` / manual run of `.github/workflows/build-android.yml`, then grab `app-release.apk` from the run's Artifacts.
+2. **Local** — needs Android Studio/SDK + JDK 17:
+   ```bash
+   npx expo prebuild --platform android --no-install
+   cd android && ./gradlew assembleRelease
+   # output: android/app/build/outputs/apk/release/app-release.apk
+   ```
+
+A **Play Store** release needs a real production keystore (release-signing config) — the current APK is for personal sideloading only.
+
+## Versioning
+
+Semver (`MAJOR.MINOR.PATCH`), tracked in `package.json` + `app.json` (keep in sync):
+
+- **MAJOR** — breaking changes (`1.0.0`+)
+- **MINOR** — new features (`0.3.0`, `0.4.0`, ...)
+- **PATCH** — bug fixes (`0.2.1`, ...)
+
+Every release also bumps the store-facing build numbers in `app.json`: `android.versionCode` (integer, +1 each release) and `ios.buildNumber` (string). Current version: **`0.2.0`**.
+
+## Docs
+
+- `AGENTS.md` — architecture, conventions, and build instructions for AI agents / contributors.
+- `codemap.md` — file-by-file directory map and data-flow overview.
+- `supabase/migrations/` — SQL schema (applied automatically on merge to `main`).
+- `modernization-plan.md` — UI/UX roadmap.
+
+## License
+
+For personal use. (Reach out before distributing.)
