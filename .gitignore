@@ -35,3 +35,6 @@ ios/
 
 # secrets
 client_secret_*.json
+
+# supabase
+supabase/.temp/
