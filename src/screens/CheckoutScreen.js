@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import useStore, { uid } from '../store/useStore';
 
 export default function CheckoutScreen() {
-  const { user, activeCustomer, setActiveCustomer, cart, addToCart, removeFromCart, clearCart, clearSession, addToHistory, pushTransaction, isDarkMode, fontSizeScale, thumbnailScale, products } = useStore();
+  const { user, activeCustomer, setActiveCustomer, cart, addToCart, removeFromCart, clearCart, addToHistory, pushTransaction, isDarkMode, fontSizeScale, thumbnailScale, products } = useStore();
   const [showSummary, setShowSummary] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [dueAmount, setDueAmount] = useState('0');
@@ -37,16 +37,6 @@ export default function CheckoutScreen() {
     setShowSummary(false);
     setDueAmount('0');
   };
-
-  if (!activeCustomer) {
-    return (
-      <View className={`flex-1 items-center justify-center p-8 ${isDarkMode ? 'bg-black' : 'bg-slate-50'}`}>
-        <Text className={`text-center text-lg ${isDarkMode ? 'text-slate-600' : 'text-slate-400'}`} style={{ fontSize: 18 * fontSizeScale }}>
-          Please select a customer from the Customers tab first.
-        </Text>
-      </View>
-    );
-  }
 
   const renderProduct = ({ item }) => {
     const qty = getItemQuantity(item.id);
@@ -119,9 +109,6 @@ export default function CheckoutScreen() {
           <Text className={isDarkMode ? 'text-slate-600 text-xs' : 'text-slate-500 text-xs'} style={{ fontSize: 10 * fontSizeScale }}>Customer</Text>
           <Text className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`} style={{ fontSize: 16 * fontSizeScale }}>{activeCustomer.name}</Text>
         </View>
-        <TouchableOpacity onPress={clearSession}>
-          <X size={20} color="#ef4444" />
-        </TouchableOpacity>
       </View>
 
       <FlatList

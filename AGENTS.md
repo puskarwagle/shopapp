@@ -20,7 +20,8 @@ Mobile-first grocery shop management app built with React Native (Expo SDK 54) +
 
 - `npm start` — start Expo dev server
 - `npm run web` — run in browser (primary dev workflow)
-- `npm run android` / `npm run ios` — run on device/emulator
+- `npm run android` / `npm run ios` — run on device/emulator via `expo run:android` / `expo run:ios`
+- `npx patch-package` — apply patches from `patches/` (runs automatically via `postinstall`)
 
 There is **no lint script and no test suite** in `package.json`. Don't invent one; if verification is needed, start the app (`npm run web`) or do a syntax sanity check.
 
@@ -106,9 +107,21 @@ For family/testing: you and Dad both create accounts; one of you creates a shop,
 - `pullAll()` (called from `App.js` on login): flushes the queue, then pulls `products`, `customers`, `transactions` from Supabase and merges by `id` into the store. Local winners on conflicts (last write wins).
 - Keys come from `src/lib/config.js` (committed — the URL + anon key are public by design; data protection = RLS + auth). `.env` is only used by local dev/metro and is NOT needed for CI builds.
 
+## Product Catalog (Fasto reference data)
+
+A global `product_catalog` table (`supabase/migrations/0004_product_catalog.sql`) holds ~400+ products scraped from Fasto — category, name, brand, price, marked_price, discount_percent, image_url. **Not shop-scoped**: every authenticated user can read, only admins can write.
+
+- `useStore` exposes `productCatalog`, `catalogCategories`, and `fetchCatalog()` (called on InventoryScreen mount).
+- **InventoryScreen** add-product flow has two paths:
+  1. **Browse Catalog** → category grid → product list → set price & stock → add to inventory
+  2. **Add Custom Product** → name, price, stock, photo (camera/gallery)
+- The catalog is read-only reference data; adding a product copies it into the shop's `products` table.
+
+`fastoextract/` contains extraction scripts (`extract_products.js`, `seed_catalog.js`, `seed.sql`) used to populate the catalog — not part of the app runtime.
+
 ## App Structure (see codemap.md)
 
-Entry: `index.js` → `App.js` (stack: Login or Main tabs). Tabs: Customers, Menu (dummy center button that opens SettingsMenu popover), Checkout, and Inventory (admin only). `HistoryScreen` is pushed on top via the stack.
+Entry: `index.js` → `App.js` (stack: Login or Main tabs). Tabs: Customers, Menu (dummy center button that opens SettingsMenu popover), and Inventory (admin only). `CheckoutScreen` and `HistoryScreen` are stack screens pushed on top (slide_from_bottom animation).
 
 ## Things to Be Careful About
 

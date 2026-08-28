@@ -61,6 +61,21 @@ const useStore = create(
       clearCart: () => set({ cart: [] }),
       clearSession: () => set({ cart: [], activeCustomer: null }),
 
+      // Product catalog from Fasto (read-only, fetched from Supabase)
+      productCatalog: [],
+      catalogCategories: [],
+      fetchCatalog: async () => {
+        if (!isSupabaseConfigured) return;
+        const { data, error } = await supabase
+          .from('product_catalog')
+          .select('*')
+          .order('category')
+          .order('name');
+        if (error || !data) return;
+        const categories = [...new Set(data.map(p => p.category).filter(Boolean))];
+        set({ productCatalog: data, catalogCategories: categories });
+      },
+
       // Offline-first data (persisted locally; synced to Supabase when online)
       products: [],
       customers: [],
@@ -270,6 +285,8 @@ const useStore = create(
         history: state.history,
         products: state.products,
         customers: state.customers,
+        productCatalog: state.productCatalog,
+        catalogCategories: state.catalogCategories,
         syncQueue: state.syncQueue,
         lastSyncedAt: state.lastSyncedAt,
       }),

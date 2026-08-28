@@ -5,7 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { View, Pressable, StyleSheet } from 'react-native';
-import { ShoppingCart, Users, Package, Menu, X } from 'lucide-react-native';
+import { Users, Package, Menu, X } from 'lucide-react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import InventoryScreen from './src/screens/InventoryScreen';
@@ -90,14 +90,6 @@ function MainTabs() {
           }}
         />
 
-        <Tab.Screen
-          name="Checkout"
-          component={CheckoutScreen}
-          options={{
-            tabBarIcon: ({ color, size }) => <ShoppingCart color={color} size={size} />,
-          }}
-        />
-
         {isAdmin && (
           <Tab.Screen
             name="Inventory"
@@ -160,6 +152,7 @@ export default function App() {
           ) : (
             <>
               <Stack.Screen name="Main" component={MainTabs} />
+              <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ animation: 'slide_from_bottom' }} />
               <Stack.Screen name="History" component={HistoryScreen} options={{ animation: 'slide_from_bottom' }} />
             </>
           )}

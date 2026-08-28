@@ -38,3 +38,6 @@ client_secret_*.json
 
 # supabase
 supabase/.temp/
+
+# Fasto catalog images (large, ~500MB+)
+fastoextract/images/
