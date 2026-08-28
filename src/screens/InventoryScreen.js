@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, Modal, TextInput, ScrollView, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, Modal, TextInput, ScrollView, Alert, Platform } from 'react-native';
 import { Plus, Camera, Image as ImageIcon, X, Trash2, Search, ChevronLeft, Tag, Package } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import useStore from '../store/useStore';
@@ -108,9 +108,14 @@ export default function InventoryScreen() {
   };
 
   const confirmDelete = (product) => {
+    const doDelete = () => deleteProduct(product.id);
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Delete "${product.name}"?`)) doDelete();
+      return;
+    }
     Alert.alert('Delete Product', `Remove "${product.name}"?`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteProduct(product.id) },
+      { text: 'Delete', style: 'destructive', onPress: doDelete },
     ]);
   };
 
@@ -141,8 +146,9 @@ export default function InventoryScreen() {
     </View>
   );
 
-  const renderCatalogProduct = ({ item }) => (
+  const renderCatalogProduct = ({ item, key }) => (
     <TouchableOpacity
+      key={key || item.id}
       onPress={() => {
         setSelectedCatalogProduct(item);
         setEditPrice(String(item.price || ''));
@@ -179,10 +185,11 @@ export default function InventoryScreen() {
     </TouchableOpacity>
   );
 
-  const renderCategory = ({ item }) => {
+  const renderCategory = ({ item, key }) => {
     const count = productCatalog.filter(p => p.category === item).length;
     return (
       <TouchableOpacity
+        key={key || item}
         onPress={() => { setSelectedCategory(item); setCatalogSearch(''); }}
         className={`flex-row items-center p-4 rounded-xl mb-2 border ${
           isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'
@@ -407,7 +414,7 @@ export default function InventoryScreen() {
                   </Text>
                 </View>
               ) : (
-                categoryProducts.map(item => renderCatalogProduct({ item }))
+                categoryProducts.map(item => renderCatalogProduct({ item, key: item.id }))
               )}
             </ScrollView>
           </>
@@ -426,7 +433,7 @@ export default function InventoryScreen() {
                 </Text>
               </View>
             ) : (
-              filteredCategories.map(item => renderCategory({ item }))
+              filteredCategories.map(item => renderCategory({ item, key: item }))
             )}
           </ScrollView>
         </>
