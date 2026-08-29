@@ -12,7 +12,7 @@ Mobile-first grocery shop management app built with React Native (Expo SDK 54) +
 - **Navigation:** `@react-navigation/native` + bottom-tabs + native-stack
 - **Styling:** NativeWind (Tailwind classes via `className`) + `StyleSheet.create` + `expo-linear-gradient` for overlays
 - **State:** Zustand store with `persist` middleware (AsyncStorage on native, key `shop-app-storage`)
-- **Backend:** Supabase (`supabase-js`). Auth (Google Sign-In via `@react-native-google-signin/google-signin` on native, OAuth redirect on web) + offline-first data sync. A project is created, the GitHub repo is linked on the dashboard for DB migrations, and `supabase/migrations/` exists (applied automatically on merge to `main`).
+- **Backend:** Supabase (`supabase-js`). Auth (Google Sign-In via `@react-native-google-signin/google-signin` on native, OAuth redirect on web) + offline-first data sync. A project is created, the GitHub repo is linked on the dashboard for DB migrations, and `supabase/migrations/` exists. **Migrations are NOT applied by CI** — there is no workflow that runs them. Apply them manually via `supabase db push` (after `supabase link`) or by pasting the SQL into the Supabase SQL editor.
 - **Animations:** React Native Reanimated, `@react-native-community/slider`
 - **Icons:** `lucide-react-native`
 

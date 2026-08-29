@@ -83,7 +83,7 @@ Every release also bumps the store-facing build numbers in `app.json`: `android.
 
 - `AGENTS.md` — architecture, conventions, and build instructions for AI agents / contributors.
 - `codemap.md` — file-by-file directory map and data-flow overview.
-- `supabase/migrations/` — SQL schema (applied automatically on merge to `main`).
+- `supabase/migrations/` — SQL schema. **Not applied by CI**; run manually via `supabase db push` or the Supabase SQL editor.
 - `modernization-plan.md` — UI/UX roadmap.
 
 ## License
