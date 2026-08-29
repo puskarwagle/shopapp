@@ -92,14 +92,19 @@ curl -X POST "https://www.merokirana.com/semantro-web-interface/query" \
   - Node 18+ global `fetch` + `FormData` (no `form-data` dep needed).
   - `listProductImages` / `getProductDetailById` need an auth token and were NOT used here.
 
-## Images (not yet fetched — Option 2)
-- No-auth `getProductData` returns `contentUrl:""` and `listProductImages` returns empty.
-- Authenticated calls returned empty bodies with the copied `customer_authCode` token, so the
-  token alone is not enough (server likely also needs the browser session cookie).
-- Plan: before full browser automation, check whether product image URLs follow a predictable
-  CDN pattern (category images live at `https://cdn.merokirana.com/archive/KiranaCategory/<hash>.jpg`)
-  or whether public product pages render `<img>` tags unauthenticated. Fallback: drive a logged-in
-  Playwright session to capture real image URLs.
+## Images (fetched)
+- **Image URLs ARE resolved** — solved via the public, no-auth `getMainImageProduct` query
+  action (see `extract_images.js`), which returns `contentUrl` per product. Product image URLs
+  follow `https://cdn.merokirana.com/archive/KiranaProduct/<hash>.jpg` (same CDN pattern as
+  category images but under `KiranaProduct/`).
+- `extract_images.js` writes `image_url` back into each record in `merokirana_products.json`.
+  Resumable + rate-limited (CONCURRENCY/DELAY_MS env). Currently **3817/3868** products have
+  an `image_url`; the rest have a genuinely missing image (no URL to reference).
+- `download_images.js` downloads each product image locally into `images/products/`
+  (`<identifier>_<slug>.<ext>`) — **3816 files (~206M)**. `images/` is git-ignored.
+- **Supabase is populated.** `product_catalog` rows for `source='merokirana'` carry the CDN
+  `image_url` (3806/3857 rows; the 51 without images have none in the source JSON).
+  `update_images.js` is the loader used to sync `image_url` from the JSON into Supabase.
 
 ## Folder structure
 ```
@@ -108,8 +113,12 @@ scrapped_sites_data/
   merokirana/
     NOTES.md             this file
     extract_products.js  no-auth extractor -> merokirana_products.json
+    extract_images.js    no-auth image URL resolver -> writes image_url into JSON
+    download_images.js   downloads images locally into images/products/ (git-ignored)
+    update_images.js     syncs image_url from JSON into Supabase product_catalog
     load_catalog.js      optional Supabase loader (run only on request)
-    merokirana_products.json   3868 extracted products
+    merokirana_products.json   3868 extracted products (3817 with image_url)
+    images/products/     3816 downloaded product images (~206M, git-ignored)
 ```
 
 ## Action name reference (69 total, from the bundle)
