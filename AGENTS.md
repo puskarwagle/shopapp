@@ -123,9 +123,9 @@ For family/testing: you and Dad both create accounts; one of you creates a shop,
 - `pullAll()` (called from `App.js` on login): flushes the queue, then pulls `products`, `customers`, `transactions` from Supabase and merges by `id` into the store. Local winners on conflicts (last write wins).
 - Keys come from `src/lib/config.js` (committed — the URL + anon key are public by design; data protection = RLS + auth). `.env` is only used by local dev/metro and is NOT needed for CI builds.
 
-## Product Catalog (Fasto reference data)
+## Product Catalog (Fasto + MeroKirana reference data)
 
-A global `product_catalog` table (`supabase/migrations/0004_product_catalog.sql`) holds ~400+ products scraped from Fasto — category, name, brand, price, marked_price, discount_percent, image_url. **Not shop-scoped**: every authenticated user can read, only admins can write.
+A global `product_catalog` table (`supabase/migrations/0004_product_catalog.sql`) holds ~6,200 products scraped from **Fasto** (2,316) and **MeroKirana** (3,857) — category, name, brand, price, marked_price, discount_percent, image_url. **Not shop-scoped**: every authenticated user can read, only admins can write.
 
 - `useStore` exposes `productCatalog`, `catalogCategories`, and `fetchCatalog()` (called on InventoryScreen mount).
 - **InventoryScreen** add-product flow has two paths:
@@ -133,7 +133,7 @@ A global `product_catalog` table (`supabase/migrations/0004_product_catalog.sql`
   2. **Add Custom Product** → name, price, stock, photo (camera/gallery)
 - The catalog is read-only reference data; adding a product copies it into the shop's `products` table.
 
-`scrapped_sites_data/` contains the scraped source data + extraction scripts used to populate the catalog — `fasto/` (`extract_products.js`, `seed_catalog.js`, `seed.sql`, `category_index.json`, raw `rsc_flight_raw.txt`) and `merokirana/` — not part of the app runtime.
+`scrapped_sites_data/` contains the scraped source data + extraction scripts used to populate the catalog — `fasto/` (`extract_products.js`, `seed_catalog.js`, `seed.sql`, `category_index.json`, raw `rsc_flight_raw.txt`) and `merokirana/` — not part of the app runtime. Merokirana rows carry CDN `image_url` (3806/3857 populated; synced via `scrapped_sites_data/merokirana/update_images.js`).
 
 ## App Structure (see codemap.md)
 
