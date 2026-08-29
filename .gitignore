@@ -41,6 +41,15 @@ supabase/.temp/
 
 # Fasto catalog images (large, ~500MB+)
 fastoextract/images/
+scrapped_sites_data/fasto/images/
+
+# MeroKirana catalog images (large)
+scrapped_sites_data/merokirana/images/
+
+# Playwright browser profile (contains session tokens/cookies) + local deps
+scrapped_sites_data/merokirana/playwright_tools/profile/
+scrapped_sites_data/merokirana/playwright_tools/node_modules/
+scrapped_sites_data/merokirana/playwright_tools/login.log
 
 # local DB guide (not tracked)
 DB_GUIDE.md
