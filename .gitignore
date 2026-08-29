@@ -41,3 +41,6 @@ supabase/.temp/
 
 # Fasto catalog images (large, ~500MB+)
 fastoextract/images/
+
+# local DB guide (not tracked)
+DB_GUIDE.md
