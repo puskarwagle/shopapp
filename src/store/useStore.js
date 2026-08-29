@@ -13,7 +13,7 @@ const genInviteCode = () => {
 
 const IMAGE_PLACEHOLDER = 'https://via.placeholder.com/150/f1f5f9/64748b?text=P';
 
-const CATALOG_VERSION = 1;
+const CATALOG_VERSION = 2;
 
 const useStore = create(
   persist(
