@@ -1,5 +1,5 @@
-import { create } from 'zustand/index.js';
-import { persist, createJSONStorage } from 'zustand/middleware.js';
+import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
@@ -12,6 +12,8 @@ const genInviteCode = () => {
 };
 
 const IMAGE_PLACEHOLDER = 'https://via.placeholder.com/150/f1f5f9/64748b?text=P';
+
+const CATALOG_VERSION = 1;
 
 const useStore = create(
   persist(
@@ -65,16 +67,26 @@ const useStore = create(
       // Product catalog from Fasto (read-only, fetched from Supabase)
       productCatalog: [],
       catalogCategories: [],
+      catalogVersion: 0,
       fetchCatalog: async () => {
         if (!isSupabaseConfigured) return;
-        const { data, error } = await supabase
-          .from('product_catalog')
-          .select('*')
-          .order('category')
-          .order('name');
-        if (error || !data) return;
-        const categories = [...new Set(data.map(p => p.category).filter(Boolean))];
-        set({ productCatalog: data, catalogCategories: categories });
+        if (get().catalogVersion === CATALOG_VERSION && get().productCatalog.length > 0) return;
+        let all = [], from = 0, size = 1000;
+        while (true) {
+          const { data, error } = await supabase
+            .from('product_catalog')
+            .select('*')
+            .order('category')
+            .order('name')
+            .range(from, from + size - 1);
+          if (error) return;
+          if (!data) break;
+          all = all.concat(data);
+          if (data.length < size) break;
+          from += size;
+        }
+        const categories = [...new Set(all.map(p => p.category).filter(Boolean))];
+        set({ productCatalog: all, catalogCategories: categories, catalogVersion: CATALOG_VERSION });
       },
 
       // Offline-first data (persisted locally; synced to Supabase when online)
@@ -326,6 +338,7 @@ const useStore = create(
         customers: state.customers,
         productCatalog: state.productCatalog,
         catalogCategories: state.catalogCategories,
+        catalogVersion: state.catalogVersion,
         syncQueue: state.syncQueue,
         lastSyncedAt: state.lastSyncedAt,
       }),
