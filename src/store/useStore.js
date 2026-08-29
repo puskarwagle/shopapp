@@ -23,6 +23,7 @@ const useStore = create(
       shopId: null,
       shopName: null,
       shopInviteCode: null,
+      inviteExpiresAt: null,
       setShopId: (shopId, shopName) => set({ shopId, shopName }),
 
       isDarkMode: false,
@@ -85,7 +86,9 @@ const useStore = create(
 
       createShop: async (name) => {
         if (!isSupabaseConfigured) {
-          set({ shopId: 'local', shopName: name || 'Local Shop', shopInviteCode: 'LOCAL' });
+          const code = genInviteCode();
+          const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+          set({ shopId: 'local', shopName: name || 'Local Shop', shopInviteCode: code, inviteExpiresAt: expires });
           return { ok: true };
         }
         const clean = (name || '').trim();
@@ -102,13 +105,44 @@ const useStore = create(
           { id: user.id, email: user.email, shop_id: shopId, role: 'admin' },
           { onConflict: 'id' }
         );
+        // Generate first dynamic invite
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+        await supabase.from('shop_invites').insert({
+          shop_id: shopId,
+          code: inviteCode,
+          expires_at: expiresAt,
+        });
         set({
           shopId,
           shopName: clean,
           shopInviteCode: inviteCode,
+          inviteExpiresAt: expiresAt,
           user: { ...get().user, id: user.id, email: user.email, role: 'admin' },
         });
         return { ok: true };
+      },
+
+      generateInvite: async () => {
+        if (!isSupabaseConfigured) {
+          const code = genInviteCode();
+          const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+          set({ shopInviteCode: code, inviteExpiresAt: expires });
+          return { ok: true, code, expiresAt: expires };
+        }
+        const shopId = get().shopId;
+        if (!shopId) return { ok: false, error: 'No shop.' };
+        // Cleanup expired invites for this shop
+        await supabase.rpc('cleanup_expired_invites', { p_shop_id: shopId });
+        const code = genInviteCode();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+        const { error } = await supabase.from('shop_invites').insert({
+          shop_id: shopId,
+          code,
+          expires_at: expiresAt,
+        });
+        if (error) return { ok: false, error: error.message };
+        set({ shopInviteCode: code, inviteExpiresAt: expiresAt });
+        return { ok: true, code, expiresAt };
       },
 
       joinShop: async (code) => {
@@ -118,12 +152,15 @@ const useStore = create(
         }
         const clean = (code || '').trim().toUpperCase();
         if (!clean) return { ok: false, error: 'Enter the invite code from the QR.' };
-        const { data: shop, error } = await supabase
-          .from('shops')
-          .select('id, name')
-          .eq('invite_code', clean)
+        const { data: invite, error } = await supabase
+          .from('shop_invites')
+          .select('shop_id, shops(id, name)')
+          .eq('code', clean)
+          .gt('expires_at', new Date().toISOString())
           .maybeSingle();
-        if (error || !shop) return { ok: false, error: 'No shop found for that code.' };
+        if (error || !invite) return { ok: false, error: 'Invalid or expired code. Ask the shop owner for a new one.' };
+        const shop = invite.shops;
+        if (!shop) return { ok: false, error: 'Shop not found.' };
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           await supabase.from('profiles').update({ shop_id: shop.id }).eq('id', user.id);
@@ -265,6 +302,7 @@ const useStore = create(
           shopId: null,
           shopName: null,
           shopInviteCode: null,
+          inviteExpiresAt: null,
           syncQueue: [],
         });
       },
@@ -277,6 +315,7 @@ const useStore = create(
         shopId: state.shopId,
         shopName: state.shopName,
         shopInviteCode: state.shopInviteCode,
+        inviteExpiresAt: state.inviteExpiresAt,
         activeCustomer: state.activeCustomer,
         isDarkMode: state.isDarkMode,
         fontSizeScale: state.fontSizeScale,

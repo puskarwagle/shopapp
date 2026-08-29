@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, Switch, StyleSheet, Pressable, ScrollView, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, Switch, StyleSheet, Pressable, ScrollView, Platform, ActivityIndicator } from 'react-native';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import Slider from '@react-native-community/slider';
-import { Moon, Sun, Type, Image as ImageIcon, History, Settings, ChevronRight, ExternalLink, LogOut, Store, Copy } from 'lucide-react-native';
+import { Moon, Sun, Type, Image as ImageIcon, History, Settings, ChevronRight, ExternalLink, LogOut, Store, Copy, RotateCw } from 'lucide-react-native';
 import useStore from '../store/useStore';
 import { useNavigation } from '@react-navigation/native';
 
@@ -14,6 +14,9 @@ if (Platform.OS !== 'web') {
 const SettingsMenu = ({ isOpen, onClose }) => {
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState('history'); // 'history' or 'menu'
+  const [remaining, setRemaining] = useState(0);
+  const [generating, setGenerating] = useState(false);
+  const timerRef = useRef(null);
   const { 
     isDarkMode, toggleDarkMode, 
     fontSizeScale, setFontSizeScale, 
@@ -23,7 +26,38 @@ const SettingsMenu = ({ isOpen, onClose }) => {
     user,
     shopName,
     shopInviteCode,
+    inviteExpiresAt,
+    generateInvite,
   } = useStore();
+
+  const calcRemaining = () => {
+    if (!inviteExpiresAt) return 0;
+    const diff = Math.floor((new Date(inviteExpiresAt).getTime() - Date.now()) / 1000);
+    return Math.max(0, diff);
+  };
+
+  useEffect(() => {
+    setRemaining(calcRemaining());
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      const r = calcRemaining();
+      setRemaining(r);
+      if (r <= 0 && timerRef.current) clearInterval(timerRef.current);
+    }, 1000);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [inviteExpiresAt, isOpen]);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    await generateInvite();
+    setGenerating(false);
+  };
+
+  const formatTime = (secs) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
 
   const animatedStyle = useAnimatedStyle(() => {
     return {
@@ -181,7 +215,7 @@ const SettingsMenu = ({ isOpen, onClose }) => {
                 </View>
 
                 {/* Invite Panel — admin/owner only */}
-                {user?.role === 'admin' && shopInviteCode && (
+                {user?.role === 'admin' && (
                   <View className={`p-4 rounded-2xl border mb-4 ${isDarkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
                     <View className="flex-row items-center gap-2 mb-3">
                       <Store size={16} color="#3b82f6" />
@@ -190,26 +224,62 @@ const SettingsMenu = ({ isOpen, onClose }) => {
                     {shopName && (
                       <Text className={`mb-2 text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Shop: {shopName}</Text>
                     )}
-                    <View className="items-center mb-3">
-                      {QRCode ? (
-                        <QRCode value={shopInviteCode} size={140} backgroundColor="transparent" />
-                      ) : (
-                        <Text className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>QR works on phone only</Text>
-                      )}
-                    </View>
-                    <Text className={`text-center text-xs mb-2 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                      Share this code or scan the QR
-                    </Text>
-                    <View className={`flex-row items-center justify-center gap-2 p-3 rounded-xl ${isDarkMode ? 'bg-slate-800' : 'bg-white border border-slate-200'}`}>
-                      <Text className="text-xl font-bold tracking-widest text-blue-500">{shopInviteCode}</Text>
-                      {Platform.OS !== 'web' && (
-                        <Pressable onPress={() => {
-                          try { require('expo-clipboard').setStringAsync(shopInviteCode); } catch (_) {}
-                        }}>
-                          <Copy size={16} color={isDarkMode ? '#94a3b8' : '#64748b'} />
+
+                    {remaining > 0 && shopInviteCode ? (
+                      <>
+                        <View className="items-center mb-3">
+                          {QRCode ? (
+                            <QRCode value={shopInviteCode} size={140} backgroundColor="transparent" />
+                          ) : (
+                            <Text className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>QR works on phone only</Text>
+                          )}
+                        </View>
+                        <Text className={`text-center text-xs mb-2 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                          Share this code or scan the QR
+                        </Text>
+                        <View className={`flex-row items-center justify-center gap-2 p-3 rounded-xl ${isDarkMode ? 'bg-slate-800' : 'bg-white border border-slate-200'}`}>
+                          <Text className="text-xl font-bold tracking-widest text-blue-500">{shopInviteCode}</Text>
+                          {Platform.OS !== 'web' && (
+                            <Pressable onPress={() => {
+                              try { require('expo-clipboard').setStringAsync(shopInviteCode); } catch (_) {}
+                            }}>
+                              <Copy size={16} color={isDarkMode ? '#94a3b8' : '#64748b'} />
+                            </Pressable>
+                          )}
+                        </View>
+                        <View className="flex-row items-center justify-between mt-3">
+                          <Text className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                            Expires in {formatTime(remaining)}
+                          </Text>
+                          <Pressable
+                            onPress={handleGenerate}
+                            disabled={generating}
+                            className="flex-row items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-500/10"
+                          >
+                            <RotateCw size={14} color="#3b82f6" />
+                            <Text className="text-blue-500 text-xs font-bold">Refresh</Text>
+                          </Pressable>
+                        </View>
+                      </>
+                    ) : (
+                      <View className="items-center py-4">
+                        <Text className={`text-sm mb-3 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                          {shopInviteCode ? 'Code expired' : 'No active invite code'}
+                        </Text>
+                        <Pressable
+                          onPress={handleGenerate}
+                          disabled={generating}
+                          className="flex-row items-center gap-2 px-5 py-3 rounded-xl bg-blue-600"
+                        >
+                          {generating ? (
+                            <ActivityIndicator color="#fff" size="small" />
+                          ) : (
+                            <RotateCw size={16} color="white" />
+                          )}
+                          <Text className="text-white font-bold">Generate New Code</Text>
                         </Pressable>
-                      )}
-                    </View>
+                      </View>
+                    )}
                   </View>
                 )}
 
