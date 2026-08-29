@@ -133,7 +133,7 @@ A global `product_catalog` table (`supabase/migrations/0004_product_catalog.sql`
   2. **Add Custom Product** → name, price, stock, photo (camera/gallery)
 - The catalog is read-only reference data; adding a product copies it into the shop's `products` table.
 
-`fastoextract/` contains extraction scripts (`extract_products.js`, `seed_catalog.js`, `seed.sql`) used to populate the catalog — not part of the app runtime.
+`scrapped_sites_data/` contains the scraped source data + extraction scripts used to populate the catalog — `fasto/` (`extract_products.js`, `seed_catalog.js`, `seed.sql`, `category_index.json`, raw `rsc_flight_raw.txt`) and `merokirana/` — not part of the app runtime.
 
 ## App Structure (see codemap.md)
 

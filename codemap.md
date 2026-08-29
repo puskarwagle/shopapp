@@ -29,7 +29,7 @@ App.js                        → Root: NavigationContainer + native-stack
 | `modernization-plan.md` | UI/UX roadmap and CI deployment plan |
 | `.github/workflows/build-android.yml` | CI: Android APK build (`assembleRelease`, debug-signed) on push/PR to `main` |
 | `patches/` | Patch files applied via `patch-package` (runs automatically on `npm install`) |
-| `fastoextract/` | Fasto product extraction + catalog seeding scripts (not part of app runtime) |
+| `scrapped_sites_data/` | Scraped source data + extraction/seeding scripts for the catalog (`fasto/`, `merokirana/`); not part of app runtime |
 
 Versioning: `app.json` + `package.json` hold the semver `version` (`0.2.0`). Store builds also bump `android.versionCode` / `ios.buildNumber` (both must increment per release; keep `version` and build numbers in sync in the same commit).
 
@@ -41,6 +41,7 @@ Versioning: `app.json` + `package.json` hold the semver `version` (`0.2.0`). Sto
 | `supabase.js` | Supabase client from `config.js`; exports `isSupabaseConfigured`; `detectSessionInUrl` enabled on web for OAuth redirects |
 | `config.js` | Committed URL + anon key + `GOOGLE_WEB_CLIENT_ID` (public by design; RLS + auth protect data). Not secrets |
 | `auth.js` | `configureGoogleSignIn()` — configures native Google SDK; `googleSignIn()` — native ID token or web OAuth redirect; `deriveRole(email)`; `ensureProfile(id, email)` → async lookup/insert of `profiles` row |
+| `search.js` | `createFuse(items, keys)` + `smartSearch(items, query, fuse)` — fuzzy + tier-ranked search (used by InventoryScreen for catalog + inventory) |
 
 ### `src/store/useStore.js`
 Single Zustand store (persisted as `shop-app-storage`). Export includes `uid()` for local ids.
@@ -74,7 +75,7 @@ Single Zustand store (persisted as `shop-app-storage`). Export includes `uid()` 
 | `ConnectShopScreen.js` | Shop onboarding | Employee scans owner's QR / enters invite code; owner creates a new shop (becomes admin); join calls `supabase.from('shops')` |
 | `CustomersScreen.js` | Customer grid + filter + add | Store-backed `customers`; add-customer modal; walk-in entry; selecting sets `activeCustomer` → pushes Checkout |
 | `CheckoutScreen.js` | Product grid + cart + checkout | Stack screen (slide_from_bottom); store-backed `products`; tap image to add, red `-` overlay to remove, qty badge, gradient text overlay; summary modal (due amount) + success modal; on confirm → `addToHistory` + `pushTransaction` |
-| `InventoryScreen.js` | Admin product management | Store-backed `products`; add-product modal with two flows: **Browse Catalog** (category grid → product list → set price/stock) or **Add Custom Product** (name, price, stock, photo via camera/gallery); delete with Alert confirm |
+| `InventoryScreen.js` | Admin product management | Store-backed `products`; add-product modal with two flows: **Browse Catalog** (category grid → product list → set price/stock) or **Add Custom Product** (name, price, stock, photo via camera/gallery); delete with Alert confirm; fuzzy **smart search** over catalog (by name/brand/subcategory) and over the shop's own inventory via `src/lib/search.js` |
 | `HistoryScreen.js` | Full transaction history | Reads `store.history` (merged from local + `transactions` pull); pushed over tabs from SettingsMenu |
 
 ### `src/components/SettingsMenu.js`
