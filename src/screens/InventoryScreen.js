@@ -3,6 +3,7 @@ import { View, Text, FlatList, TouchableOpacity, Image, Modal, TextInput, Scroll
 import { Plus, Camera, Image as ImageIcon, X, Trash2, Search, ChevronLeft, Tag, Package } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import useStore from '../store/useStore';
+import { createFuse, smartSearch } from '../lib/search';
 
 const CATEGORY_ICONS = {
   'Ice-cream & Popsicles': '🍦', 'Soft Drinks & Juices': '🥤', 'Chocolates & Sweets': '🍫',
@@ -32,6 +33,7 @@ export default function InventoryScreen() {
   const [selectedCatalogProduct, setSelectedCatalogProduct] = useState(null);
   const [editPrice, setEditPrice] = useState('');
   const [editStock, setEditStock] = useState('');
+  const [invSearch, setInvSearch] = useState('');
   const {
     products, addProduct, deleteProduct, isDarkMode, fontSizeScale, thumbnailScale,
     productCatalog, catalogCategories, fetchCatalog,
@@ -41,25 +43,25 @@ export default function InventoryScreen() {
     fetchCatalog();
   }, []);
 
-  const filteredCategories = useMemo(() => {
-    if (!catalogSearch.trim()) return catalogCategories;
-    const q = catalogSearch.toLowerCase();
-    return catalogCategories.filter(c => c.toLowerCase().includes(q));
-  }, [catalogCategories, catalogSearch]);
+  const invFuse = useMemo(() => createFuse(products, ['name']), [products]);
+  const displayedProducts = useMemo(
+    () => smartSearch(products, invSearch, invFuse) ?? products,
+    [invFuse, invSearch, products]
+  );
+
+  const catalogFuse = useMemo(
+    () => createFuse(productCatalog, ['name', 'brand', 'subcategory']),
+    [productCatalog]
+  );
+  const catalogResults = useMemo(
+    () => smartSearch(productCatalog, catalogSearch, catalogFuse),
+    [productCatalog, catalogSearch, catalogFuse]
+  );
 
   const categoryProducts = useMemo(() => {
     if (!selectedCategory) return [];
-    let items = productCatalog.filter(p => p.category === selectedCategory);
-    if (catalogSearch.trim()) {
-      const q = catalogSearch.toLowerCase();
-      items = items.filter(p =>
-        p.name.toLowerCase().includes(q) ||
-        (p.brand && p.brand.toLowerCase().includes(q)) ||
-        (p.subcategory && p.subcategory.toLowerCase().includes(q))
-      );
-    }
-    return items;
-  }, [productCatalog, selectedCategory, catalogSearch]);
+    return productCatalog.filter(p => p.category === selectedCategory);
+  }, [productCatalog, selectedCategory]);
 
   const pickImage = async (useCamera = false) => {
     let result;
@@ -219,6 +221,7 @@ export default function InventoryScreen() {
       canGoBack = true;
     } else if (addMode === 'catalog') {
       title = 'Browse Catalog';
+      if (catalogSearch.trim()) canGoBack = true;
     } else if (addMode === 'custom') {
       title = 'Add Custom Product';
     }
@@ -227,13 +230,14 @@ export default function InventoryScreen() {
       <View className="flex-row justify-between items-center mb-4">
         <View className="flex-row items-center flex-1">
           {canGoBack && (
-            <TouchableOpacity onPress={() => {
+            <TouchableOpacity             onPress={() => {
               if (selectedCatalogProduct) {
                 setSelectedCatalogProduct(null);
                 setCatalogSearch('');
+              } else if (catalogSearch.trim()) {
+                setCatalogSearch('');
               } else {
                 setSelectedCategory(null);
-                setCatalogSearch('');
               }
             }} className="mr-3">
               <ChevronLeft size={24} color={isDarkMode ? '#94a3b8' : '#64748b'} />
@@ -252,11 +256,9 @@ export default function InventoryScreen() {
 
   const renderSearchBar = () => {
     if (!addMode) return null;
-    const placeholder = addMode === 'catalog' && !selectedCategory
-      ? 'Search categories...'
-      : addMode === 'catalog' && selectedCategory && !selectedCatalogProduct
-        ? 'Search products...'
-        : '';
+    const placeholder = addMode === 'catalog' && !selectedCatalogProduct
+      ? 'Search products...'
+      : '';
 
     if (!placeholder) return null;
 
@@ -401,6 +403,26 @@ export default function InventoryScreen() {
         );
       }
 
+      // Smart product search across the whole catalog (products only)
+      if (catalogResults) {
+        return (
+          <>
+            {renderSearchBar()}
+            <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+              {catalogResults.length === 0 ? (
+                <View className="items-center py-12">
+                  <Text className={isDarkMode ? 'text-slate-600' : 'text-slate-400'} style={{ fontSize: 14 * fontSizeScale }}>
+                    No products match your search
+                  </Text>
+                </View>
+              ) : (
+                catalogResults.map(item => renderCatalogProduct({ item, key: item.id }))
+              )}
+            </ScrollView>
+          </>
+        );
+      }
+
       // Step 2: Products in category
       if (selectedCategory) {
         return (
@@ -421,19 +443,19 @@ export default function InventoryScreen() {
         );
       }
 
-      // Step 1: Categories
+      // Step 1: Categories (browse only; search already switches to product results)
       return (
         <>
           {renderSearchBar()}
           <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-            {filteredCategories.length === 0 ? (
+            {catalogCategories.length === 0 ? (
               <View className="items-center py-12">
                 <Text className={isDarkMode ? 'text-slate-600' : 'text-slate-400'} style={{ fontSize: 14 * fontSizeScale }}>
-                  {catalogSearch ? 'No categories match your search' : 'No catalog data'}
+                  No catalog data
                 </Text>
               </View>
             ) : (
-              filteredCategories.map(item => renderCategory({ item, key: item }))
+              catalogCategories.map(item => renderCategory({ item, key: item }))
             )}
           </ScrollView>
         </>
@@ -530,10 +552,34 @@ export default function InventoryScreen() {
     return null;
   };
 
+  const renderInventorySearch = () => (
+    <View className={`px-4 pt-4 pb-2 ${isDarkMode ? 'bg-black' : 'bg-slate-50'}`}>
+      <View className={`flex-row items-center rounded-xl px-3 py-2.5 border ${
+        isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
+      }`}>
+        <Search size={18} color={isDarkMode ? '#64748b' : '#94a3b8'} />
+        <TextInput
+          className={`flex-1 ml-2 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}
+          style={{ fontSize: 14 * fontSizeScale, outlineStyle: 'none' }}
+          placeholder="Search your inventory..."
+          placeholderTextColor={isDarkMode ? '#475569' : '#94a3b8'}
+          value={invSearch}
+          onChangeText={setInvSearch}
+        />
+        {invSearch.length > 0 && (
+          <TouchableOpacity onPress={() => setInvSearch('')}>
+            <X size={16} color={isDarkMode ? '#64748b' : '#94a3b8'} />
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+
   return (
     <View className={`flex-1 ${isDarkMode ? 'bg-black' : 'bg-slate-50'}`}>
+      {renderInventorySearch()}
       <FlatList
-        data={products}
+        data={displayedProducts}
         renderItem={renderProduct}
         keyExtractor={item => item.id}
         numColumns={2}
@@ -541,7 +587,7 @@ export default function InventoryScreen() {
         ListEmptyComponent={
           <View className="items-center pt-24">
             <Text className={isDarkMode ? 'text-slate-600' : 'text-slate-400'} style={{ fontSize: 16 * fontSizeScale }}>
-              No products yet. Tap + to add one.
+              {invSearch ? 'No products match your search.' : 'No products yet. Tap + to add one.'}
             </Text>
           </View>
         }
