@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     name: Build Android APK
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04-4core
 
     steps:
       - name: Checkout repository
@@ -47,12 +47,24 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
+      - name: Cache native build intermediates
+        uses: actions/cache@v4
+        with:
+          path: |
+            android/app/.cxx
+            android/app/build
+            android/build
+            android/.gradle
+          key: ${{ runner.os }}-native-${{ hashFiles('**/build.gradle', '**/CMakeLists.txt', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-native-
+
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      - name: Build Release APK
+      - name: Build Release APK (arm64-v8a)
         working-directory: android
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --build-cache --parallel
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
