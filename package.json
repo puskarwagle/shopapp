@@ -8,6 +8,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
+    "build:android": "bash scripts/build-android.sh",
     "postinstall": "patch-package"
   },
   "dependencies": {
