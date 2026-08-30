@@ -60,12 +60,12 @@ Roles are stored in the `profiles.role` column (default `'employee'`; set to `'a
 `eas build` is **not** configured. Two working paths (both debug-signed, ~46 MB):
 
 1. **GitHub Actions** — push to `main` / PR to `main` / manual run of `.github/workflows/build-android.yml`, then grab `app-release.apk` from the run's Artifacts.
-2. **Local** — needs Android Studio/SDK + JDK 17. See the full step-by-step guide in **`LOCAL_BUILD.md`**; the short version:
+2. **Local** — needs Android Studio/SDK + JDK 17. The one-liner:
    ```bash
-   npx expo prebuild --platform android --no-install
-   cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --build-cache --parallel
+   npm run build:android
    # output: android/app/build/outputs/apk/release/app-release.apk
    ```
+   The script generates the native `android/` project if needed, locates JDK 17, and builds an arm64-v8a release APK. Full step-by-step guide: **`LOCAL_BUILD.md`**.
 
 A **Play Store** release needs a real production keystore (release-signing config) — the current APK is for personal sideloading only.
 

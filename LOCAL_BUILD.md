@@ -55,6 +55,16 @@ ls ~/Library/Android/sdk  # expect build-tools/, platforms/, ndk/, cmake/, platf
 
 ## Build steps (from the repo root)
 
+The quickest way — one command, locates JDK 17 + Android SDK and builds for you:
+
+```bash
+npm install
+npm run build:android
+# output: android/app/build/outputs/apk/release/app-release.apk
+```
+
+Manually (what the script does under the hood):
+
 ```bash
 # 1. Install JS dependencies (first time / after pulling)
 npm install

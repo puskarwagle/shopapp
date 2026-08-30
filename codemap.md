@@ -23,7 +23,7 @@ App.js                        → Root: NavigationContainer + native-stack
 | `App.js` | Navigation container, stack, tab bar, custom center menu button |
 | `index.js` | App entry point (Expo) |
 | `app.json` | Expo app config |
-| `package.json` | Scripts + dependencies (no lint/test scripts) |
+| `package.json` | Scripts + dependencies; `test` (Vitest), `build:android` (local APK), no lint script |
 | `babel.config.js`, `metro.config.js`, `tailwind.config.js` | NativeWind + build config |
 | `global.css` | NativeWind CSS entry (imported in `App.js`); includes desktop phone-frame styling (430px constrained viewport, dark mode bezel) |
 | `modernization-plan.md` | UI/UX roadmap and CI deployment plan |

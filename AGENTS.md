@@ -21,9 +21,11 @@ Mobile-first grocery shop management app built with React Native (Expo SDK 54) +
 - `npm start` — start Expo dev server
 - `npm run web` — run in browser (primary dev workflow)
 - `npm run android` / `npm run ios` — run on device/emulator via `expo run:android` / `expo run:ios`
+- `npm run build:android` — build a local release APK (`scripts/build-android.sh`; locates JDK 17 + SDK, generates `android/` if needed)
+- `npm run test` — run the Vitest suite (`src/store/useStore.test.js` etc.)
 - `npx patch-package` — apply patches from `patches/` (runs automatically via `postinstall`)
 
-There is **no lint script and no test suite** in `package.json`. Don't invent one; if verification is needed, start the app (`npm run web`) or do a syntax sanity check.
+There is **no lint script** in `package.json`, but there is a `test` script (`vitest run`). Don't invent a linter; for sanity checks run `npm run test` or start the app (`npm run web`).
 
 ## Android APK Build & Install
 
@@ -42,7 +44,8 @@ Workflow: `.github/workflows/build-android.yml`
 
 ### 2. Local (faster, needs Android Studio/SDK + JDK 17)
 
-- `npx expo prebuild --platform android --no-install` then `cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --build-cache --parallel`.
+- Quick one-liner: `npm run build:android` (runs `scripts/build-android.sh` — locates JDK 17 + SDK, generates `android/` if needed, builds arm64-v8a).
+- Manual equivalent: `npx expo prebuild --platform android --no-install` then `cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --build-cache --parallel`.
 - Output: `android/app/build/outputs/apk/release/app-release.apk`. The `android/` folder is gitignored (regenerated each time).
 - Local `.env` (EXPO_PUBLIC_*) is inlined into the bundle; `src/lib/config.js` values are used when env is absent.
 
