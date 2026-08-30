@@ -102,7 +102,7 @@ Each shop is an isolated tenant. App flow:
 
 1. **First launch / no account** → `LoginScreen` → user creates account + shop name (becomes **owner/admin**). Also available: "Sign In" for existing accounts.
 2. **Signed in, no shop** → `ConnectShopScreen` → employee scans the owner's QR code or types a 6-character invite code to join the shop; or creates a new shop if they're the owner.
-3. **Signed in + has shop** → `MainTabs` (Customers / Checkout / Inventory if admin).
+3. **Signed in + has shop** → `MainTabs` (Customers / History / Inventory if admin).
 
 Schema (`supabase/migrations/0003_shops.sql`):
 - `shops` table (id, name unique, invite_code unique, owner_id, created_at)
@@ -119,7 +119,7 @@ For family/testing: you and Dad both create accounts; one of you creates a shop,
 ## Offline-First Sync (how data flows)
 
 - Source of truth: the Zustand store, persisted to AsyncStorage (key `shop-app-storage`). All reads/writes are local and instant — works fully offline.
-- Every write also enqueues a sync op (`syncQueue`, persisted) and attempts a background `flushSync`; failed ops stay queued and retry on next login/`pullAll`.
+- Every write also enqueues a sync op (`syncQueue`, persisted) and attempts a background `flushSync`; failed ops stay queued and retry on next login/`pullAll`. Customer edits (`updateCustomer`) upsert; `deleteCustomer` enqueues a `delete` op.
 - `pullAll()` (called from `App.js` on login): flushes the queue, then pulls `products`, `customers`, `transactions` from Supabase and merges by `id` into the store. Local winners on conflicts (last write wins).
 - Keys come from `src/lib/config.js` (committed — the URL + anon key are public by design; data protection = RLS + auth). `.env` is only used by local dev/metro and is NOT needed for CI builds.
 
@@ -137,7 +137,7 @@ A global `product_catalog` table (`supabase/migrations/0004_product_catalog.sql`
 
 ## App Structure (see codemap.md)
 
-Entry: `index.js` → `App.js` (stack: Login or Main tabs). Tabs: Customers, Menu (dummy center button that opens SettingsMenu popover), and Inventory (admin only). `CheckoutScreen` and `HistoryScreen` are stack screens pushed on top (slide_from_bottom animation).
+Entry: `index.js` → `App.js` (stack: Login or Main tabs). Tabs: Customers, Menu (dummy center button that opens SettingsMenu popover), History, and Inventory (admin only). `CheckoutScreen` and `CustomerProfileScreen` are stack screens pushed on top (slide_from_bottom animation). The app is wrapped in `SafeAreaProvider`; the tab bar and screen headers use safe-area insets. `CustomerProfileScreen` shows/edits a customer (via `updateCustomer`/`deleteCustomer`) and their filtered transaction history.
 
 ## Things to Be Careful About
 

@@ -11,10 +11,10 @@ App.js                        → Root: NavigationContainer + native-stack
   ├─ logged in, no shop       → ConnectShopScreen (scan QR / enter code / create shop)
   └─ logged in + has shop     → MainTabs (bottom tab navigator)
                                 + CheckoutScreen (pushed, slide_from_bottom)
-                                + HistoryScreen (pushed, slide_from_bottom)
+                                + CustomerProfileScreen (pushed, slide_from_bottom)
 ```
 
-`App.js` defines the tab bar, the custom center Menu button (dummy `Menu` screen with a custom `tabBarButton`), and conditionally renders the Inventory tab only for admins. The `SettingsMenu` popover is rendered on top of the tabs, driven by `isMenuOpen` local state. `CheckoutScreen` is a stack screen (not a tab) — pushed from the Customers tab when a customer is selected.
+`App.js` defines the tab bar, the custom center Menu button (dummy `Menu` screen with a custom `tabBarButton`), and conditionally renders the Inventory tab only for admins. The `SettingsMenu` popover is rendered on top of the tabs, driven by `isMenuOpen` local state. `CheckoutScreen` and `CustomerProfileScreen` are stack screens (not tabs) — `CheckoutScreen` is pushed from the Customers tab when a customer is selected, and `CustomerProfileScreen` is pushed from Checkout or History. The whole app is wrapped in `SafeAreaProvider`; the tab bar and screen headers use safe-area insets.
 
 ## Root Files
 
@@ -31,7 +31,7 @@ App.js                        → Root: NavigationContainer + native-stack
 | `patches/` | Patch files applied via `patch-package` (runs automatically on `npm install`) |
 | `scrapped_sites_data/` | Scraped source data + extraction/seeding scripts for the catalog (`fasto/`, `merokirana/`); not part of app runtime |
 
-Versioning: `app.json` + `package.json` hold the semver `version` (`0.2.0`). Store builds also bump `android.versionCode` / `ios.buildNumber` (both must increment per release; keep `version` and build numbers in sync in the same commit).
+Versioning: `app.json` + `package.json` hold the semver `version` (`0.2.1`). Store builds also bump `android.versionCode` / `ios.buildNumber` (both must increment per release; keep `version` and build numbers in sync in the same commit).
 
 ## src/ — Application Code
 
@@ -56,7 +56,7 @@ Single Zustand store (persisted as `shop-app-storage`). Export includes `uid()` 
 - `cart` `{ id, name, price, quantity }`, `addToCart`, `removeFromCart`, `clearCart`
 - `products`, `customers` — DB-backed lists (offline-first); rows always tagged with `shop_id`
 - `productCatalog`, `catalogCategories`, `fetchCatalog()` — global Fasto reference data from `product_catalog` table (read-only for employees, writable by admins)
-- `addProduct`, `updateProduct`, `deleteProduct`, `addCustomer` — apply locally, then enqueue sync
+- `addProduct`, `updateProduct`, `deleteProduct`, `addCustomer`, `updateCustomer`, `deleteCustomer` — apply locally, then enqueue sync (`deleteCustomer` enqueues a `delete` op)
 - `pushTransaction(order)` — enqueues a checkout into the `transactions` table
 - `createShop(name)` — inserts into `shops` table, sets profile to admin, returns `{ ok, error }`
 - `joinShop(code)` — looks up shop by invite code, updates profile `shop_id`, returns `{ ok, error }`
@@ -73,10 +73,11 @@ Single Zustand store (persisted as `shop-app-storage`). Export includes `uid()` 
 | --- | --- | --- |
 | `LoginScreen.js` | Google Sign-In only | Calls `googleSignIn()` from `auth.js`; on native uses ID token flow, on web uses OAuth redirect; loading + error states; offline message if unconfigured |
 | `ConnectShopScreen.js` | Shop onboarding | Employee scans owner's QR / enters invite code; owner creates a new shop (becomes admin); join calls `supabase.from('shops')` |
-| `CustomersScreen.js` | Customer grid + filter + add | Store-backed `customers`; add-customer modal; walk-in entry; selecting sets `activeCustomer` → pushes Checkout |
-| `CheckoutScreen.js` | Product grid + cart + checkout | Stack screen (slide_from_bottom); store-backed `products`; tap image to add, red `-` overlay to remove, qty badge, gradient text overlay; summary modal (due amount) + success modal; on confirm → `addToHistory` + `pushTransaction` |
+| `CustomersScreen.js` | Customer grid + filter + add | Store-backed `customers`; add-customer modal with optional camera/gallery photo; walk-in entry; selecting sets `activeCustomer` → pushes Checkout |
+| `CheckoutScreen.js` | Product grid + cart + checkout | Stack screen (slide_from_bottom); store-backed `products`; tap image to add, red `-` overlay to remove, qty badge, gradient text overlay; back button + customer link → CustomerProfile; summary modal (due amount) + success modal; on confirm → `addToHistory` + `pushTransaction` |
+| `CustomerProfileScreen.js` | Customer details + edit + history | Stack screen (slide_from_bottom); pulls `customerId`/`customerName` from route params; shows photo, due, transaction count, total spent, and that customer's filtered `history`; edit mode edits name/due/photo via `updateCustomer`, delete with confirm via `deleteCustomer`; works for customers not in the local list (history-only, read caps) |
 | `InventoryScreen.js` | Admin product management | Store-backed `products`; add-product modal with two flows: **Browse Catalog** (category grid → product list → set price/stock) or **Add Custom Product** (name, price, stock, photo via camera/gallery); delete with Alert confirm; fuzzy **smart search** over catalog (by name/brand/subcategory) and over the shop's own inventory via `src/lib/search.js` |
-| `HistoryScreen.js` | Full transaction history | Reads `store.history` (merged from local + `transactions` pull); pushed over tabs from SettingsMenu |
+| `HistoryScreen.js` | Full transaction history | Now a bottom tab; reads `store.history` (merged from local + `transactions` pull); tapping a customer links to CustomerProfile |
 
 ### `src/components/SettingsMenu.js`
 Animated bottom popover with two tabs: **History** (last 5 transactions, tap → full HistoryScreen) and **Settings** (dark mode switch, typography slider, thumbnail slider). Positioned above the tab bar; its own overlay press-to-close; slider interactions stop propagation.
