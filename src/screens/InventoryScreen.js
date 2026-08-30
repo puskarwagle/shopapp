@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, Modal, TextInput, ScrollView, Alert, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Plus, Camera, Image as ImageIcon, X, Trash2, Search, ChevronLeft, Tag, Package } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import useStore from '../store/useStore';
@@ -38,6 +39,7 @@ export default function InventoryScreen() {
     products, addProduct, deleteProduct, isDarkMode, fontSizeScale, thumbnailScale,
     productCatalog, catalogCategories, fetchCatalog,
   } = useStore();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     fetchCatalog();
@@ -602,7 +604,7 @@ export default function InventoryScreen() {
 
       <Modal visible={showAddModal} animationType="slide" transparent={true}>
         <View className="flex-1 bg-black/80 justify-end">
-          <View className={`rounded-t-3xl p-6 h-[85%] ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`}>
+          <View className={`rounded-t-3xl p-6 h-[85%] ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`} style={{ paddingBottom: insets.bottom + 24 }}>
             {renderStepHeader()}
             <View style={{ flex: 1 }}>
               {renderModalContent()}

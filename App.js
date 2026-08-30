@@ -5,13 +5,15 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 import { View, Pressable, StyleSheet } from 'react-native';
-import { Users, Package, Menu, X } from 'lucide-react-native';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Users, Package, History, Menu, X } from 'lucide-react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import InventoryScreen from './src/screens/InventoryScreen';
 import CustomersScreen from './src/screens/CustomersScreen';
 import CheckoutScreen from './src/screens/CheckoutScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
+import CustomerProfileScreen from './src/screens/CustomerProfileScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import ConnectShopScreen from './src/screens/ConnectShopScreen';
 import useStore from './src/store/useStore';
@@ -26,6 +28,7 @@ function MainTabs() {
   const { user, isDarkMode } = useStore();
   const isAdmin = user?.role === 'admin';
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const insets = useSafeAreaInsets();
 
   return (
     <View style={{ flex: 1 }}>
@@ -45,8 +48,8 @@ function MainTabs() {
             backgroundColor: isDarkMode ? '#020617' : '#fff',
             borderTopWidth: 1.5,
             borderTopColor: isDarkMode ? '#1e293b' : '#f1f5f9',
-            height: 70,
-            paddingBottom: 12,
+            height: 70 + insets.bottom,
+            paddingBottom: Math.max(12, insets.bottom),
             borderTopLeftRadius: 32,
             borderTopRightRadius: 32,
             position: 'absolute',
@@ -99,6 +102,14 @@ function MainTabs() {
             }}
           />
         )}
+
+        <Tab.Screen
+          name="History"
+          component={HistoryScreen}
+          options={{
+            tabBarIcon: ({ color, size }) => <History color={color} size={size} />,
+          }}
+        />
       </Tab.Navigator>
 
       <SettingsMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
@@ -142,23 +153,25 @@ export default function App() {
   }, [user?.email, shopId]);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <NavigationContainer theme={isDarkMode ? DarkTheme : DefaultTheme}>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {!user ? (
-            <Stack.Screen name="Login" component={LoginScreen} />
-          ) : !shopId ? (
-            <Stack.Screen name="Connect" component={ConnectShopScreen} />
-          ) : (
-            <>
-              <Stack.Screen name="Main" component={MainTabs} />
-              <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ animation: 'slide_from_bottom' }} />
-              <Stack.Screen name="History" component={HistoryScreen} options={{ animation: 'slide_from_bottom' }} />
-            </>
-          )}
-        </Stack.Navigator>
-        <StatusBar style={isDarkMode ? 'light' : 'dark'} />
-      </NavigationContainer>
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <NavigationContainer theme={isDarkMode ? DarkTheme : DefaultTheme}>
+          <Stack.Navigator screenOptions={{ headerShown: false }}>
+            {!user ? (
+              <Stack.Screen name="Login" component={LoginScreen} />
+            ) : !shopId ? (
+              <Stack.Screen name="Connect" component={ConnectShopScreen} />
+            ) : (
+              <>
+                <Stack.Screen name="Main" component={MainTabs} />
+                <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ animation: 'slide_from_bottom' }} />
+                <Stack.Screen name="CustomerProfile" component={CustomerProfileScreen} options={{ animation: 'slide_from_bottom' }} />
+              </>
+            )}
+          </Stack.Navigator>
+          <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+        </NavigationContainer>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }

@@ -77,7 +77,7 @@ const SettingsMenu = ({ isOpen, onClose }) => {
 
   const handleFullHistory = () => {
     onClose();
-    navigation.navigate('History');
+    navigation.navigate('Main', { screen: 'History' });
   };
 
   return (
