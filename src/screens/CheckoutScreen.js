@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, Modal, TextInput } from 'react-native';
-import { Minus, X, CheckCircle2 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Minus, X, CheckCircle2, ChevronRight, ChevronLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
 import useStore, { uid } from '../store/useStore';
 
 export default function CheckoutScreen() {
   const { user, activeCustomer, setActiveCustomer, cart, addToCart, removeFromCart, clearCart, addToHistory, pushTransaction, isDarkMode, fontSizeScale, thumbnailScale, products } = useStore();
+  const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const [showSummary, setShowSummary] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [dueAmount, setDueAmount] = useState('0');
@@ -102,13 +106,25 @@ export default function CheckoutScreen() {
   return (
     <View className={`flex-1 ${isDarkMode ? 'bg-black' : 'bg-slate-50'}`}>
       {/* Active Session Bar */}
-      <View className={`border-b px-4 py-3 flex-row justify-between items-center ${
+      <View className={`border-b px-4 pb-3 flex-row items-center gap-3 ${
         isDarkMode ? 'bg-black border-slate-900' : 'bg-white border-slate-200'
-      }`}>
-        <View>
+      }`} style={{ paddingTop: insets.top + 12 }}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          className={`w-12 h-12 items-center justify-center rounded-2xl ${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'}`}
+        >
+          <ChevronLeft size={24} color={isDarkMode ? 'white' : '#0f172a'} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('CustomerProfile', { customerId: activeCustomer.id, customerName: activeCustomer.name })}
+          className="flex-1"
+        >
           <Text className={isDarkMode ? 'text-slate-600 text-xs' : 'text-slate-500 text-xs'} style={{ fontSize: 10 * fontSizeScale }}>Customer</Text>
-          <Text className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`} style={{ fontSize: 16 * fontSizeScale }}>{activeCustomer.name}</Text>
-        </View>
+          <View className="flex-row items-center gap-2">
+            <Text className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`} style={{ fontSize: 16 * fontSizeScale }}>{activeCustomer.name}</Text>
+            <ChevronRight size={16} color={isDarkMode ? '#64748b' : '#94a3b8'} />
+          </View>
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -141,7 +157,7 @@ export default function CheckoutScreen() {
       {/* Checkout Summary Modal */}
       <Modal visible={showSummary} animationType="slide" transparent={true}>
         <View className="flex-1 bg-black/80 justify-end">
-          <View className={`rounded-t-3xl p-6 ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`}>
+          <View className={`rounded-t-3xl p-6 ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`} style={{ paddingBottom: insets.bottom + 24 }}>
             <View className="flex-row justify-between items-center mb-6">
               <Text className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`} style={{ fontSize: 24 * fontSizeScale }}>Summary</Text>
               <TouchableOpacity onPress={() => setShowSummary(false)}>
