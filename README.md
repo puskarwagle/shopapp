@@ -60,10 +60,10 @@ Roles are stored in the `profiles.role` column (default `'employee'`; set to `'a
 `eas build` is **not** configured. Two working paths (both debug-signed, ~46 MB):
 
 1. **GitHub Actions** — push to `main` / PR to `main` / manual run of `.github/workflows/build-android.yml`, then grab `app-release.apk` from the run's Artifacts.
-2. **Local** — needs Android Studio/SDK + JDK 17:
+2. **Local** — needs Android Studio/SDK + JDK 17. See the full step-by-step guide in **`LOCAL_BUILD.md`**; the short version:
    ```bash
    npx expo prebuild --platform android --no-install
-   cd android && ./gradlew assembleRelease
+   cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --build-cache --parallel
    # output: android/app/build/outputs/apk/release/app-release.apk
    ```
 
@@ -83,6 +83,7 @@ Every release also bumps the store-facing build numbers in `app.json`: `android.
 
 - `AGENTS.md` — architecture, conventions, and build instructions for AI agents / contributors.
 - `codemap.md` — file-by-file directory map and data-flow overview.
+- `LOCAL_BUILD.md` — step-by-step guide to building the Android APK on your own machine.
 - `supabase/migrations/` — SQL schema. **Not applied by CI**; run manually via `supabase db push` or the Supabase SQL editor.
 - `modernization-plan.md` — UI/UX roadmap.
 
