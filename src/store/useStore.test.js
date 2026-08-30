@@ -113,6 +113,23 @@ describe('product + customer operations', () => {
     expect(c.name).toBe('Ram');
     expect(c.shop_id).toBe('test-shop');
   });
+
+  it('updateCustomer patches existing customer in place', () => {
+    useStore.getState().addCustomer({ name: 'Ram', due: 0 });
+    const id = useStore.getState().customers[0].id;
+    useStore.getState().updateCustomer(id, { name: 'Ram Bahadur', due: 500 });
+    const updated = useStore.getState().customers[0];
+    expect(updated.id).toBe(id);
+    expect(updated.name).toBe('Ram Bahadur');
+    expect(updated.due).toBe(500);
+  });
+
+  it('deleteCustomer removes customer by id', () => {
+    useStore.getState().addCustomer({ name: 'Ram', due: 0 });
+    const id = useStore.getState().customers[0].id;
+    useStore.getState().deleteCustomer(id);
+    expect(useStore.getState().customers.find(x => x.id === id)).toBeUndefined();
+  });
 });
 
 describe('persistence partialize', () => {

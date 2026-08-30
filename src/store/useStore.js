@@ -212,6 +212,22 @@ const useStore = create(
         set((state) => ({ customers: [row, ...state.customers] }));
         get().enqueueSync({ table: 'customers', op: 'upsert', row });
       },
+      updateCustomer: (customerId, patch) => {
+        if (!get().shopId) return;
+        set((state) => ({
+          customers: state.customers.map(c =>
+            c.id === customerId ? { ...c, ...patch } : c
+          )
+        }));
+        const updated = get().customers.find(c => c.id === customerId);
+        if (updated) get().enqueueSync({ table: 'customers', op: 'upsert', row: updated });
+      },
+      deleteCustomer: (customerId) => {
+        set((state) => ({
+          customers: state.customers.filter(c => c.id !== customerId),
+        }));
+        get().enqueueSync({ table: 'customers', op: 'delete', row: { id: customerId } });
+      },
       pushTransaction: (order) => {
         if (!get().shopId) return;
         get().enqueueSync({
@@ -286,9 +302,9 @@ const useStore = create(
 
           const histMap = new Map(state.history.map(h => [h.id, h]));
           (tRes.data || []).forEach(t => histMap.set(t.id, {
-            id: t.id, customerName: t.customer_name, total: Number(t.total),
-            dueAmount: Number(t.due_amount), items: t.items || [],
-            processedBy: t.processed_by, timestamp: t.created_at,
+            id: t.id, customerId: t.customer_id, customerName: t.customer_name,
+            total: Number(t.total), dueAmount: Number(t.due_amount),
+            items: t.items || [], processedBy: t.processed_by, timestamp: t.created_at,
           }));
 
           return {
