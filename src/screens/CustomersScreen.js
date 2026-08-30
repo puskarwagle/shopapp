@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, Image, Modal } from 'react-native';
-import { Search, UserPlus, X } from 'lucide-react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, Image, Modal, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Search, UserPlus, Camera, Image as ImageIcon, X } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
 import useStore from '../store/useStore';
 import { useNavigation } from '@react-navigation/native';
 
@@ -11,8 +13,10 @@ export default function CustomersScreen() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDue, setNewDue] = useState('');
+  const [newImage, setNewImage] = useState(null);
   const { customers, addCustomer, setActiveCustomer, isDarkMode, fontSizeScale, thumbnailScale } = useStore();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   const filteredCustomers = customers.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase())
@@ -25,16 +29,30 @@ export default function CustomersScreen() {
     navigation.navigate('Checkout');
   };
 
+  const pickImage = async (useCamera = false) => {
+    let result;
+    if (useCamera) {
+      await ImagePicker.requestCameraPermissionsAsync();
+      result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5 });
+    } else {
+      result = await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5 });
+    }
+    if (!result.canceled) {
+      setNewImage(result.assets[0].uri);
+    }
+  };
+
   const handleAddCustomer = () => {
     const name = newName.trim();
     if (!name) return;
     addCustomer({
       name,
       due: parseFloat(newDue) || 0,
-      image: 'https://via.placeholder.com/150/f1f5f9/64748b?text=' + encodeURIComponent(name.charAt(0).toUpperCase()),
+      image: newImage || 'https://via.placeholder.com/150/f1f5f9/64748b?text=' + encodeURIComponent(name.charAt(0).toUpperCase()),
     });
     setNewName('');
     setNewDue('');
+    setNewImage(null);
     setShowAddModal(false);
   };
 
@@ -104,11 +122,49 @@ export default function CustomersScreen() {
 
       <Modal visible={showAddModal} animationType="slide" transparent={true}>
         <View className="flex-1 bg-black/80 justify-end">
-          <View className={`rounded-t-3xl p-6 ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`}>
+          <View className={`rounded-t-3xl p-6 max-h-[90%] ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`} style={{ paddingBottom: insets.bottom + 24 }}>
             <View className="flex-row justify-between items-center mb-6">
               <Text className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>New Customer</Text>
               <TouchableOpacity onPress={() => setShowAddModal(false)}>
                 <X size={24} color={isDarkMode ? '#94a3b8' : '#64748b'} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+            <TouchableOpacity
+              onPress={() => pickImage(false)}
+              className={`w-full aspect-square rounded-2xl border-2 border-dashed items-center justify-center mb-4 overflow-hidden ${
+                isDarkMode ? 'bg-black border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}
+            >
+              {newImage ? (
+                <Image source={{ uri: newImage }} className="w-full h-full" />
+              ) : (
+                <View className="items-center">
+                  <Camera size={48} color={isDarkMode ? '#475569' : '#cbd5e1'} />
+                  <Text className={`text-sm mt-2 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Tap to add photo</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <View className="flex-row gap-3 mb-5">
+              <TouchableOpacity
+                onPress={() => pickImage(true)}
+                className={`flex-1 flex-row p-3 rounded-xl items-center justify-center ${
+                  isDarkMode ? 'bg-slate-800' : 'bg-slate-100'
+                }`}
+              >
+                <Camera size={18} color={isDarkMode ? '#cbd5e1' : '#475569'} />
+                <Text className={`font-bold ml-2 ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Camera</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => pickImage(false)}
+                className={`flex-1 flex-row p-3 rounded-xl items-center justify-center ${
+                  isDarkMode ? 'bg-slate-800' : 'bg-slate-100'
+                }`}
+              >
+                <ImageIcon size={18} color={isDarkMode ? '#cbd5e1' : '#475569'} />
+                <Text className={`font-bold ml-2 ${isDarkMode ? 'text-slate-200' : 'text-slate-700'}`}>Gallery</Text>
               </TouchableOpacity>
             </View>
 
@@ -143,6 +199,7 @@ export default function CustomersScreen() {
             >
               <Text className="text-white font-bold text-xl">Add Customer</Text>
             </TouchableOpacity>
+            </ScrollView>
           </View>
         </View>
       </Modal>
