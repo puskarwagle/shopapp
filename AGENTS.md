@@ -29,20 +29,20 @@ There is **no lint script and no test suite** in `package.json`. Don't invent on
 
 `eas build` is NOT configured (the old `.github/workflows/eas-build.yml` path does not exist). Two working paths, both producing a debug-signed APK:
 
-### 1. GitHub Actions (default, slow ~20-25 min)
+### 1. GitHub Actions (default)
 
 Workflow: `.github/workflows/build-android.yml`
 
 - **Triggers:** push to `main`, PR to `main`, or manual "Run workflow" in the Actions tab.
-- **Pipeline:** `npm ci` → JDK 17 → Android SDK → `npx expo prebuild --platform android --no-install` → `./gradlew assembleRelease`.
+- **Pipeline:** `npm ci` → JDK 17 → Android SDK → `npx expo prebuild --platform android --no-install` → `./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --build-cache --parallel`.
 - **Preconditions for a successful build:**
   - `app.json` MUST define `android.package` (currently `com.puskarwagle.shopapp`). `expo prebuild` fails in CI without it.
   - `package-lock.json` must exist (workflow uses `npm ci` — note this even though `bun.lock` is the local lockfile; `bun.lock` is gitignored).
-- Result: artifact **`shopapp-release-apk`** → `app-release.apk` (~46 MB), downloadable from the run's Artifacts section.
+- Result: artifact **`shopapp-release-apk`** → `app-release.apk` (~46 MB), downloadable from the run's Artifacts section. The release APK is **arm64-v8a only** (modern phones); native build intermediates (`android/app/.cxx`, `android/app/build`) are cached between runs.
 
 ### 2. Local (faster, needs Android Studio/SDK + JDK 17)
 
-- `npx expo prebuild --platform android --no-install` then `cd android && ./gradlew assembleRelease`.
+- `npx expo prebuild --platform android --no-install` then `cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --build-cache --parallel`.
 - Output: `android/app/build/outputs/apk/release/app-release.apk`. The `android/` folder is gitignored (regenerated each time).
 - Local `.env` (EXPO_PUBLIC_*) is inlined into the bundle; `src/lib/config.js` values are used when env is absent.
 

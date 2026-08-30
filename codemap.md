@@ -27,7 +27,7 @@ App.js                        → Root: NavigationContainer + native-stack
 | `babel.config.js`, `metro.config.js`, `tailwind.config.js` | NativeWind + build config |
 | `global.css` | NativeWind CSS entry (imported in `App.js`); includes desktop phone-frame styling (430px constrained viewport, dark mode bezel) |
 | `modernization-plan.md` | UI/UX roadmap and CI deployment plan |
-| `.github/workflows/build-android.yml` | CI: Android APK build (`assembleRelease`, debug-signed) on push/PR to `main` |
+| `.github/workflows/build-android.yml` | CI: Android APK build (`assembleRelease`, debug-signed, **arm64-v8a only**) on push/PR to `main` |
 | `patches/` | Patch files applied via `patch-package` (runs automatically on `npm install`) |
 | `scrapped_sites_data/` | Scraped source data + extraction/seeding scripts for the catalog (`fasto/`, `merokirana/`); not part of app runtime |
 
