@@ -30,6 +30,15 @@ const useStore = create(
 
       isDarkMode: false,
       toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
+      inspectMode: false,
+      toggleInspectMode: () => set((state) => ({ inspectMode: !state.inspectMode })),
+      inspectTarget: null,
+      setInspectTarget: (target) => set({ inspectTarget: target }),
+      clearInspectTarget: () => set({ inspectTarget: null }),
+      inspectCopied: false,
+      setInspectCopied: (val) => set({ inspectCopied: val }),
+      inspectInfo: null,
+      setInspectInfo: (info) => set({ inspectInfo: info }),
       fontSizeScale: 1,
       setFontSizeScale: (scale) => set({ fontSizeScale: scale }),
       thumbnailScale: 1,
@@ -208,7 +217,7 @@ const useStore = create(
       },
       addCustomer: (customer) => {
         if (!get().shopId) return;
-        const row = { ...customer, id: customer.id || uid(), shop_id: get().shopId };
+        const row = { ...customer, id: customer.id || uid(), shop_id: get().shopId, is_deleted: false };
         set((state) => ({ customers: [row, ...state.customers] }));
         get().enqueueSync({ table: 'customers', op: 'upsert', row });
       },
@@ -223,10 +232,40 @@ const useStore = create(
         if (updated) get().enqueueSync({ table: 'customers', op: 'upsert', row: updated });
       },
       deleteCustomer: (customerId) => {
-        set((state) => ({
-          customers: state.customers.filter(c => c.id !== customerId),
-        }));
-        get().enqueueSync({ table: 'customers', op: 'delete', row: { id: customerId } });
+        const c = get().customers.find(x => x.id === customerId);
+        if (!c) return;
+        get().updateCustomer(customerId, { is_deleted: true });
+      },
+      restoreCustomer: (customerId) => {
+        const c = get().customers.find(x => x.id === customerId);
+        if (!c) return;
+        get().updateCustomer(customerId, { is_deleted: false });
+      },
+      addToCustomerDue: (customerId, amount) => {
+        const c = get().customers.find(x => x.id === customerId);
+        if (!c) return;
+        get().updateCustomer(customerId, { due: (Number(c.due) || 0) + (Number(amount) || 0) });
+      },
+      receivePayment: (customerId, customerName, amount, processedBy) => {
+        const value = Number(amount) || 0;
+        if (value <= 0) return;
+        const c = get().customers.find(x => x.id === customerId);
+        if (c) {
+          get().updateCustomer(customerId, { due: Math.max(0, (Number(c.due) || 0) - value) });
+        }
+        const now = new Date().toISOString();
+        const record = {
+          id: uid(),
+          customerId,
+          customerName,
+          total: 0,
+          dueAmount: -value,
+          items: [{ name: 'Payment received', quantity: 1, price: -value }],
+          processedBy: processedBy || 'Unknown',
+          timestamp: now,
+        };
+        get().addToHistory(record);
+        get().pushTransaction(record);
       },
       pushTransaction: (order) => {
         if (!get().shopId) return;
@@ -298,6 +337,7 @@ const useStore = create(
           const customersMap = new Map(state.customers.map(c => [c.id, c]));
           (cRes.data || []).forEach(c => customersMap.set(c.id, {
             id: c.id, name: c.name, image: c.image, due: Number(c.due),
+            is_deleted: !!c.is_deleted,
           }));
 
           const histMap = new Map(state.history.map(h => [h.id, h]));
