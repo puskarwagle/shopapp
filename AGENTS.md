@@ -53,6 +53,70 @@ Workflow: `.github/workflows/build-android.yml`
 
 - `npm run web` — no build required; the primary daily dev loop.
 
+### Phone testing over LAN (touch + interact)
+
+Test the web app on a real phone (touch, camera, etc.) over the local network:
+
+```
+npx expo start --web --host lan
+```
+
+Opens on `http://<LAN-IP>:8081` (e.g. `http://192.168.18.22:8081`). Phone and laptop must be on the same WiFi.
+
+### Nginx reverse proxy (LAN, optional)
+
+A user-local nginx is compiled at `~/.local/nginx` (no sudo required). It reverse-proxies port 80 → Expo on 8081, giving a clean URL on the LAN.
+
+**Setup (one-time):**
+
+```bash
+# Compile from source (already done, but for reference):
+cd /tmp && curl -sLO https://nginx.org/download/nginx-1.26.2.tar.gz && tar xzf nginx-1.26.2.tar.gz
+cd nginx-1.26.2
+./configure --prefix=$HOME/.local/nginx --with-http_ssl_module \
+  --with-cc-opt="-I/usr/local/opt/openssl@3/include" \
+  --with-ld-opt="-L/usr/local/opt/openssl@3/lib" \
+  --with-pcre --without-http_rewrite_module
+make -j$(sysctl -n hw.ncpu) && make install
+```
+
+**Config** — `~/.local/nginx/conf/nginx.conf`:
+
+```nginx
+worker_processes 1;
+events { worker_connections 64; }
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+    server {
+        listen 8080;
+        server_name _;
+        location / {
+            proxy_pass http://127.0.0.1:8081;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+        }
+    }
+}
+```
+
+**Usage:**
+
+```bash
+# Terminal 1: Expo dev server
+npx expo start --web --host lan
+
+# Terminal 2: nginx reverse proxy
+~/.local/nginx/sbin/nginx
+
+# Phone browser → http://<LAN-IP>:8080
+```
+
+Stop nginx: `~/.local/nginx/sbin/nginx -s quit`
+
 Build etiquette when changing app code:
 - Never bump the app version or re-run a build unless asked; the same artifact name is uploaded each run.
 - Future **Play Store** release needs a real production keystore (release-signing config) — current debug-signed APK is for personal sideloading only. Also plan: public signup → gate roles via the `profiles` table (see below) instead of email-derived roles.

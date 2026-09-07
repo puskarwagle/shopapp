@@ -49,6 +49,29 @@ npm run android   # expo run:android (device/emulator)
 npm run ios       # expo run:ios
 ```
 
+### Test on a real phone (LAN)
+
+Run Expo in LAN mode to access the web app from your phone's browser (touch, camera, etc.):
+
+```bash
+npx expo start --web --host lan
+# Phone → http://<your-laptop-ip>:8081
+```
+
+**Optional: nginx reverse proxy** for a cleaner URL (port 8080 → Expo 8081):
+
+```bash
+# Terminal 1
+npx expo start --web --host lan
+
+# Terminal 2
+~/.local/nginx/sbin/nginx
+
+# Phone → http://<your-laptop-ip>:8080
+```
+
+Nginx is compiled from source to `~/.local/nginx` (no sudo needed). Config at `~/.local/nginx/conf/nginx.conf`. See `AGENTS.md` for full setup details.
+
 Supabase keys live in `src/lib/config.js` (committed on purpose — URL + anon key are public; RLS + auth protect the data). For local overrides, set `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` in a `.env` file.
 
 ## User Roles
