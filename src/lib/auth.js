@@ -18,9 +18,12 @@ export const googleSignIn = async () => {
   if (!isSupabaseConfigured) return { error: 'Supabase not configured.' };
 
   if (Platform.OS === 'web') {
+    const loc = window.location;
+    const dir = loc.pathname.replace(/[^/]*\.html$/, '');
+    const redirectTo = `${loc.origin}${dir.endsWith('/') ? dir : `${dir}/`}`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo },
     });
     if (error) return { error: error.message };
     return { error: null };
