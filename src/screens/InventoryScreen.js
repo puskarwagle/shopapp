@@ -5,6 +5,7 @@ import { Plus, Camera, Image as ImageIcon, X, Trash2, Search, ChevronLeft, Tag, 
 import * as ImagePicker from 'expo-image-picker';
 import useStore from '../store/useStore';
 import { createFuse, smartSearch } from '../lib/search';
+import Inspect from '../components/Inspect';
 
 const CATEGORY_ICONS = {
   'Ice-cream & Popsicles': '🍦', 'Soft Drinks & Juices': '🥤', 'Chocolates & Sweets': '🍫',
@@ -124,6 +125,7 @@ export default function InventoryScreen() {
   };
 
   const renderProduct = ({ item }) => (
+    <Inspect id="inventory-product-card">
     <View
       className={`flex-1 m-2 rounded-2xl shadow-sm border overflow-hidden ${
         isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'
@@ -148,9 +150,11 @@ export default function InventoryScreen() {
         </TouchableOpacity>
       </View>
     </View>
+    </Inspect>
   );
 
   const renderCatalogProduct = ({ item, key }) => (
+    <Inspect id="inventory-catalog-item">
     <TouchableOpacity
       key={key || item.id}
       onPress={() => {
@@ -187,11 +191,13 @@ export default function InventoryScreen() {
         Rs. {item.price}
       </Text>
     </TouchableOpacity>
+    </Inspect>
   );
 
   const renderCategory = ({ item, key }) => {
     const count = productCatalog.filter(p => p.category === item).length;
     return (
+      <Inspect id="inventory-category-item">
       <TouchableOpacity
         key={key || item}
         onPress={() => { setSelectedCategory(item); setCatalogSearch(''); }}
@@ -208,6 +214,7 @@ export default function InventoryScreen() {
         </View>
         <ChevronLeft size={18} color={isDarkMode ? '#64748b' : '#94a3b8'} style={{ transform: [{ rotate: '180deg' }] }} />
       </TouchableOpacity>
+      </Inspect>
     );
   };
 
@@ -232,6 +239,7 @@ export default function InventoryScreen() {
       <View className="flex-row justify-between items-center mb-4">
         <View className="flex-row items-center flex-1">
           {canGoBack && (
+            <Inspect id="inventory-modal-back-btn">
             <TouchableOpacity             onPress={() => {
               if (selectedCatalogProduct) {
                 setSelectedCatalogProduct(null);
@@ -244,14 +252,17 @@ export default function InventoryScreen() {
             }} className="mr-3">
               <ChevronLeft size={24} color={isDarkMode ? '#94a3b8' : '#64748b'} />
             </TouchableOpacity>
+            </Inspect>
           )}
           <Text className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`} style={{ fontSize: 20 * fontSizeScale }}>
             {title}
           </Text>
         </View>
+        <Inspect id="inventory-modal-cancel-btn">
         <TouchableOpacity onPress={closeModal}>
           <X size={24} color={isDarkMode ? '#94a3b8' : '#64748b'} />
         </TouchableOpacity>
+        </Inspect>
       </View>
     );
   };
@@ -291,6 +302,7 @@ export default function InventoryScreen() {
     if (!addMode) {
       return (
         <View className="space-y-3 mt-4">
+          <Inspect id="inventory-catalog-btn">
           <TouchableOpacity
             onPress={() => setAddMode('catalog')}
             className={`flex-row items-center p-5 rounded-2xl border ${
@@ -309,7 +321,9 @@ export default function InventoryScreen() {
               </Text>
             </View>
           </TouchableOpacity>
+          </Inspect>
 
+          <Inspect id="inventory-custom-btn">
           <TouchableOpacity
             onPress={() => setAddMode('custom')}
             className={`flex-row items-center p-5 rounded-2xl border ${
@@ -328,6 +342,7 @@ export default function InventoryScreen() {
               </Text>
             </View>
           </TouchableOpacity>
+          </Inspect>
         </View>
       );
     }
@@ -595,14 +610,17 @@ export default function InventoryScreen() {
         }
       />
 
-      <TouchableOpacity
-        className="absolute bottom-40 right-6 bg-blue-600 w-14 h-14 rounded-full items-center justify-center shadow-lg"
-        onPress={() => setShowAddModal(true)}
-      >
-        <Plus size={28} color="white" />
-      </TouchableOpacity>
+      <Inspect id="inventory-add-btn">
+        <TouchableOpacity
+          className="absolute bottom-40 right-6 bg-blue-600 w-14 h-14 rounded-full items-center justify-center shadow-lg"
+          onPress={() => setShowAddModal(true)}
+        >
+          <Plus size={28} color="white" />
+        </TouchableOpacity>
+      </Inspect>
 
       <Modal visible={showAddModal} animationType="slide" transparent={true}>
+        <Inspect id="inventory-modal">
         <View className="flex-1 bg-black/80 justify-end">
           <View className={`rounded-t-3xl p-6 h-[85%] ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`} style={{ paddingBottom: insets.bottom + 24 }}>
             {renderStepHeader()}
@@ -611,6 +629,7 @@ export default function InventoryScreen() {
             </View>
           </View>
         </View>
+        </Inspect>
       </Modal>
     </View>
   );
