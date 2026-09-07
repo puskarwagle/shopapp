@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, Modal, TextInput, ScrollView, Alert, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Plus, Camera, Image as ImageIcon, X, Trash2, Search, ChevronLeft, Tag, Package } from 'lucide-react-native';
+import { Plus, Camera, Image as ImageIcon, X, Trash2, Search, ChevronLeft, Tag, Package, Sparkles } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import useStore from '../store/useStore';
 import { createFuse, smartSearch } from '../lib/search';
@@ -37,7 +37,7 @@ export default function InventoryScreen() {
   const [editStock, setEditStock] = useState('');
   const [invSearch, setInvSearch] = useState('');
   const {
-    products, addProduct, deleteProduct, isDarkMode, fontSizeScale, thumbnailScale,
+    products, addProduct, deleteProduct, seedSampleInventory, isDarkMode, fontSizeScale, thumbnailScale,
     productCatalog, catalogCategories, fetchCatalog,
   } = useStore();
   const insets = useSafeAreaInsets();
@@ -87,6 +87,19 @@ export default function InventoryScreen() {
       image: newProduct.image || 'https://via.placeholder.com/150/f1f5f9/64748b?text=Product',
     };
     addProduct(product);
+    closeModal();
+  };
+
+  const handleSeed = () => {
+    const res = seedSampleInventory();
+    const msg = res.ok
+      ? `Added ${res.added} products${res.skipped ? ` (${res.skipped} already in inventory)` : ''}.`
+      : (res.error || 'Could not seed inventory.');
+    if (Platform.OS === 'web') {
+      window.alert(msg);
+    } else {
+      Alert.alert('Seed inventory', msg);
+    }
     closeModal();
   };
 
@@ -339,6 +352,27 @@ export default function InventoryScreen() {
               </Text>
               <Text className={`text-sm ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`} style={{ fontSize: 12 * fontSizeScale }}>
                 Enter name, price, stock, and photo manually
+              </Text>
+            </View>
+          </TouchableOpacity>
+          </Inspect>
+
+          <Inspect id="inventory-seed-btn">
+          <TouchableOpacity
+            onPress={handleSeed}
+            className={`flex-row items-center p-5 rounded-2xl border ${
+              isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'
+            }`}
+          >
+            <View className="w-12 h-12 rounded-full bg-purple-100 items-center justify-center mr-4">
+              <Sparkles size={22} color="#9333ea" />
+            </View>
+            <View className="flex-1">
+              <Text className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-800'}`} style={{ fontSize: 16 * fontSizeScale }}>
+                Seed All Categories
+              </Text>
+              <Text className={`text-sm ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`} style={{ fontSize: 12 * fontSizeScale }}>
+                Guess 1 product per category to fill your inventory
               </Text>
             </View>
           </TouchableOpacity>
@@ -602,10 +636,18 @@ export default function InventoryScreen() {
         numColumns={2}
         contentContainerStyle={{ padding: 8, paddingBottom: 100 }}
         ListEmptyComponent={
-          <View className="items-center pt-24">
+          <View className="items-center pt-24 px-8">
             <Text className={isDarkMode ? 'text-slate-600' : 'text-slate-400'} style={{ fontSize: 16 * fontSizeScale }}>
               {invSearch ? 'No products match your search.' : 'No products yet. Tap + to add one.'}
             </Text>
+            {!invSearch && (
+              <Inspect id="inventory-empty-seed-btn">
+              <TouchableOpacity onPress={handleSeed} className="bg-purple-600 px-6 py-3 rounded-2xl mt-4 flex-row items-center">
+                <Sparkles size={18} color="white" />
+                <Text className="text-white font-bold ml-2">Guess my stock (1 per category)</Text>
+              </TouchableOpacity>
+              </Inspect>
+            )}
           </View>
         }
       />
