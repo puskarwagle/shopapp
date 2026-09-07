@@ -14,6 +14,7 @@ vi.mock('../lib/supabase', () => ({
 }));
 
 const useStore = (await import('../store/useStore')).default;
+import { SEED_PRODUCTS } from '../lib/seedInventory';
 
 const reset = () =>
   useStore.setState({
@@ -305,6 +306,43 @@ describe('customer due ledger', () => {
     useStore.getState().receivePayment(id, 'Ram', 0, 'staff@shop.com');
     useStore.getState().receivePayment(id, 'Ram', -5, 'staff@shop.com');
     expect(useStore.getState().history.length).toBe(count);
+  });
+});
+
+describe('seed sample inventory', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    reset();
+  });
+  afterEach(() => {
+    vi.runOnlyPendingTimers();
+    vi.useRealTimers();
+  });
+
+  it('adds one product per seed category, tagged with shop_id', () => {
+    const res = useStore.getState().seedSampleInventory();
+    expect(res.ok).toBe(true);
+    expect(res.added).toBe(SEED_PRODUCTS.length);
+    const products = useStore.getState().products;
+    expect(products).toHaveLength(SEED_PRODUCTS.length);
+    expect(products.every(p => p.shop_id === 'test-shop')).toBe(true);
+    expect(products.every(p => p.id && p.name && p.image)).toBe(true);
+  });
+
+  it('skips names already in inventory on re-run', () => {
+    useStore.getState().seedSampleInventory();
+    const res = useStore.getState().seedSampleInventory();
+    expect(res.ok).toBe(true);
+    expect(res.added).toBe(0);
+    expect(res.skipped).toBe(SEED_PRODUCTS.length);
+    expect(useStore.getState().products).toHaveLength(SEED_PRODUCTS.length);
+  });
+
+  it('refuses to seed without a shop', () => {
+    useStore.setState({ shopId: null });
+    const res = useStore.getState().seedSampleInventory();
+    expect(res.ok).toBe(false);
+    expect(useStore.getState().products).toEqual([]);
   });
 });
 

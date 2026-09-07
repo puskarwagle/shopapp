@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { SEED_PRODUCTS } from '../lib/seedInventory';
 
 export const uid = () =>
   Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -214,6 +215,15 @@ const useStore = create(
           cart: state.cart.filter(i => i.id !== productId),
         }));
         get().enqueueSync({ table: 'products', op: 'delete', row: { id: productId } });
+      },
+      seedSampleInventory: () => {
+        if (!get().shopId) return { ok: false, error: 'No shop.' };
+        const existing = new Set(get().products.map(p => (p.name || '').trim().toLowerCase()));
+        const fresh = SEED_PRODUCTS.filter(p => !existing.has(p.name.trim().toLowerCase()));
+        fresh.forEach(p => get().addProduct({
+          name: p.name, price: p.price, stock: p.stock, image: p.image,
+        }));
+        return { ok: true, added: fresh.length, skipped: SEED_PRODUCTS.length - fresh.length };
       },
       addCustomer: (customer) => {
         if (!get().shopId) return;
