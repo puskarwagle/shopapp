@@ -1,20 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, Modal, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Minus, X, CheckCircle2, ChevronRight, ChevronLeft } from 'lucide-react-native';
+import { Minus, X, CheckCircle2, ChevronLeft, Search } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import useStore, { uid } from '../store/useStore';
+import Inspect from '../components/Inspect';
 
 export default function CheckoutScreen() {
-  const { user, activeCustomer, setActiveCustomer, cart, addToCart, removeFromCart, clearCart, addToHistory, pushTransaction, isDarkMode, fontSizeScale, thumbnailScale, products } = useStore();
+  const { user, activeCustomer, setActiveCustomer, cart, addToCart, removeFromCart, clearCart, addToHistory, pushTransaction, addToCustomerDue, isDarkMode, fontSizeScale, thumbnailScale, products } = useStore();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const [showSummary, setShowSummary] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [dueAmount, setDueAmount] = useState('0');
+  const [dueAmount, setDueAmount] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const amountRef = useRef(null);
+  const searchRef = useRef(null);
 
-  const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2);
+  useEffect(() => {
+    const t = setTimeout(() => amountRef.current?.focus?.(), 100);
+    return () => clearTimeout(t);
+  }, []);
+
+  const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const dueValue = parseFloat(dueAmount) || 0;
+  const effectiveTotal = (cartTotal > 0 ? cartTotal : dueValue).toFixed(2);
+  const canCheckout = cart.length > 0 || dueValue > 0;
+
+  const filteredProducts = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter(p =>
+      p.name?.toLowerCase().includes(q) ||
+      p.category?.toLowerCase().includes(q)
+    );
+  }, [products, searchQuery]);
+
+  const handleSearchSubmit = () => {
+    if (filteredProducts.length > 0) {
+      addToCart(filteredProducts[0]);
+      setSearchQuery('');
+    }
+  };
 
   const getItemQuantity = (id) => {
     const item = cart.find(i => i.id === id);
@@ -22,29 +49,55 @@ export default function CheckoutScreen() {
   };
 
   const handleFinishCheckout = () => {
+    if (!activeCustomer || !canCheckout) return;
+    const customerId = activeCustomer.id;
+    const customerName = activeCustomer.name;
     const now = new Date().toISOString();
     const order = {
       id: uid(),
-      customerId: activeCustomer.id,
-      customerName: activeCustomer.name,
-      total: parseFloat(total),
-      dueAmount: parseFloat(dueAmount) || 0,
+      customerId,
+      customerName,
+      total: parseFloat(effectiveTotal) || 0,
+      dueAmount: dueValue,
       items: cart.map(item => ({ name: item.name, quantity: item.quantity, price: item.price })),
       processedBy: user?.email || 'Unknown',
       timestamp: now,
     };
     addToHistory(order);
     pushTransaction(order);
+    if (dueValue > 0) addToCustomerDue(customerId, dueValue);
 
-    setShowSuccess(true);
-    clearCart();
     setShowSummary(false);
-    setDueAmount('0');
+    setDueAmount('');
+    setSearchQuery('');
+    navigation.navigate('Main');
+    setActiveCustomer(null);
+    clearCart();
   };
+
+  if (!activeCustomer) {
+    return (
+      <View className={`flex-1 items-center justify-center p-6 ${isDarkMode ? 'bg-black' : 'bg-slate-50'}`}>
+        <Text className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`} style={{ fontSize: 18 * fontSizeScale }}>
+          No customer selected
+        </Text>
+        <Text className={`text-center mb-8 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`} style={{ fontSize: 14 * fontSizeScale }}>
+          Pick a customer from the store to start a checkout.
+        </Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Main')}
+          className="bg-blue-600 px-6 py-3 rounded-xl"
+        >
+          <Text className="text-white font-bold text-lg" style={{ fontSize: 18 * fontSizeScale }}>Back to Store</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const renderProduct = ({ item }) => {
     const qty = getItemQuantity(item.id);
     return (
+      <Inspect id="checkout-product-card">
       <View 
         className={`flex-1 m-2 rounded-2xl shadow-sm overflow-hidden border ${
           isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'
@@ -56,12 +109,14 @@ export default function CheckoutScreen() {
           
           {/* Top left red minus overlay */}
           {qty > 0 && (
+            <Inspect id="checkout-remove-btn">
             <TouchableOpacity 
               onPress={() => removeFromCart(item.id)}
               className="absolute top-2 left-2 w-8 h-8 rounded-full bg-white/90 items-center justify-center border border-red-500 shadow-sm z-10"
             >
               <Minus size={18} color="#ef4444" />
             </TouchableOpacity>
+            </Inspect>
           )}
 
           {/* Quantity Badge */}
@@ -99,6 +154,7 @@ export default function CheckoutScreen() {
           </LinearGradient>
         </TouchableOpacity>
       </View>
+      </Inspect>
     );
   };
 
@@ -115,35 +171,97 @@ export default function CheckoutScreen() {
         >
           <ChevronLeft size={24} color={isDarkMode ? 'white' : '#0f172a'} />
         </TouchableOpacity>
+        <Inspect id="checkout-customer-card">
         <TouchableOpacity
           onPress={() => navigation.navigate('CustomerProfile', { customerId: activeCustomer.id, customerName: activeCustomer.name })}
-          className="flex-1"
+          className="flex-1 flex-row items-center justify-end gap-2"
         >
-          <Text className={isDarkMode ? 'text-slate-600 text-xs' : 'text-slate-500 text-xs'} style={{ fontSize: 10 * fontSizeScale }}>Customer</Text>
-          <View className="flex-row items-center gap-2">
-            <Text className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`} style={{ fontSize: 16 * fontSizeScale }}>{activeCustomer.name}</Text>
-            <ChevronRight size={16} color={isDarkMode ? '#64748b' : '#94a3b8'} />
-          </View>
+          <Image
+            source={{ uri: activeCustomer.image || 'https://via.placeholder.com/150/f1f5f9/64748b?text=' + encodeURIComponent(activeCustomer.name.charAt(0).toUpperCase()) }}
+            className="w-10 h-10 rounded-full"
+          />
+          <Text className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`} style={{ fontSize: 16 * fontSizeScale }}>{activeCustomer.name}</Text>
         </TouchableOpacity>
+        </Inspect>
+      </View>
+
+      <View className={`px-4 pt-3 ${isDarkMode ? 'bg-black' : 'bg-slate-50'}`}>
+        <Text className={`font-medium mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-700'}`} style={{ fontSize: 14 * fontSizeScale }}>Amount Due / Total (Rs.)</Text>
+        <View className={`flex-row items-center rounded-xl px-4 border ${
+          isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+        }`}>
+          <Text className={`font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`} style={{ fontSize: 18 * fontSizeScale }}>Rs.</Text>
+          <TextInput
+            ref={amountRef}
+            autoFocus={true}
+            className={`flex-1 p-3 text-lg font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}
+            style={{ fontSize: 20 * fontSizeScale, outlineStyle: 'none' }}
+            placeholder="0"
+            placeholderTextColor={isDarkMode ? '#475569' : '#94a3b8'}
+            keyboardType="numeric"
+            returnKeyType="next"
+            value={dueAmount}
+            onChangeText={setDueAmount}
+            onSubmitEditing={() => searchRef.current?.focus?.()}
+          />
+          {dueAmount.length > 0 && (
+            <TouchableOpacity onPress={() => setDueAmount('')}>
+              <X size={16} color={isDarkMode ? '#64748b' : '#94a3b8'} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      <View className={`px-4 pt-3 pb-1 ${isDarkMode ? 'bg-black' : 'bg-slate-50'}`}>
+        <View className={`flex-row items-center rounded-xl px-3 py-2.5 border ${
+          isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+        }`}>
+          <Search size={18} color={isDarkMode ? '#64748b' : '#94a3b8'} />
+          <TextInput
+            ref={searchRef}
+            className={`flex-1 ml-2 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}
+            style={{ fontSize: 14 * fontSizeScale, outlineStyle: 'none' }}
+            placeholder="Search products..."
+            placeholderTextColor={isDarkMode ? '#475569' : '#94a3b8'}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+            onSubmitEditing={handleSearchSubmit}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <X size={16} color={isDarkMode ? '#64748b' : '#94a3b8'} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <FlatList
-        data={products}
+        data={filteredProducts}
         renderItem={renderProduct}
         keyExtractor={item => item.id}
         numColumns={2}
         contentContainerStyle={{ padding: 8, paddingBottom: 140 }}
+        keyboardShouldPersistTaps="handled"
+        ListEmptyComponent={
+          <View className="items-center pt-24">
+            <Text className={isDarkMode ? 'text-slate-600' : 'text-slate-400'} style={{ fontSize: 16 * fontSizeScale }}>
+              {searchQuery ? 'No products match your search.' : 'No products yet.'}
+            </Text>
+          </View>
+        }
       />
 
       {/* Floating Total Bar */}
-      {total > 0 && (
+      {canCheckout && (
         <View className={`absolute bottom-24 left-6 right-6 rounded-2xl p-4 flex-row justify-between items-center shadow-2xl ${
           isDarkMode ? 'bg-slate-900 border border-slate-800' : 'bg-white border border-slate-100'
         }`}>
           <View>
             <Text className={isDarkMode ? 'text-slate-500 text-xs uppercase font-bold tracking-widest' : 'text-slate-400 text-xs uppercase font-bold tracking-widest'} style={{ fontSize: 10 * fontSizeScale }}>Total</Text>
-            <Text className={isDarkMode ? 'text-white text-2xl font-bold' : 'text-slate-900 text-2xl font-bold'} style={{ fontSize: 24 * fontSizeScale }}>Rs. {total}</Text>
+            <Text className={isDarkMode ? 'text-white text-2xl font-bold' : 'text-slate-900 text-2xl font-bold'} style={{ fontSize: 24 * fontSizeScale }}>Rs. {effectiveTotal}</Text>
           </View>
+          <Inspect id="checkout-confirm-btn">
           <TouchableOpacity 
             onPress={() => setShowSummary(true)}
             className="bg-blue-600 px-6 py-3 rounded-xl flex-row items-center"
@@ -151,12 +269,14 @@ export default function CheckoutScreen() {
             <Text className="text-white font-bold text-lg mr-2" style={{ fontSize: 18 * fontSizeScale }}>Checkout</Text>
             <CheckCircle2 size={20} color="white" />
           </TouchableOpacity>
+          </Inspect>
         </View>
       )}
 
       {/* Checkout Summary Modal */}
       <Modal visible={showSummary} animationType="slide" transparent={true}>
         <View className="flex-1 bg-black/80 justify-end">
+          <Inspect id="checkout-summary-modal">
           <View className={`rounded-t-3xl p-6 ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`} style={{ paddingBottom: insets.bottom + 24 }}>
             <View className="flex-row justify-between items-center mb-6">
               <Text className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`} style={{ fontSize: 24 * fontSizeScale }}>Summary</Text>
@@ -179,7 +299,7 @@ export default function CheckoutScreen() {
               <View className={`h-px my-3 ${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'}`} />
               <View className="flex-row justify-between">
                 <Text className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`} style={{ fontSize: 20 * fontSizeScale }}>Total</Text>
-                <Text className="text-xl font-bold text-blue-500" style={{ fontSize: 20 * fontSizeScale }}>Rs. {total}</Text>
+                <Text className="text-xl font-bold text-blue-500" style={{ fontSize: 20 * fontSizeScale }}>Rs. {effectiveTotal}</Text>
               </View>
             </View>
 
@@ -191,6 +311,7 @@ export default function CheckoutScreen() {
                 }`}
                 style={{ outlineStyle: 'none' }}
                 keyboardType="numeric"
+                placeholder="0"
                 value={dueAmount}
                 onChangeText={setDueAmount}
               />
@@ -203,32 +324,7 @@ export default function CheckoutScreen() {
               <Text className="text-white font-bold text-xl" style={{ fontSize: 20 * fontSizeScale }}>Confirm Checkout</Text>
             </TouchableOpacity>
           </View>
-        </View>
-      </Modal>
-
-      {/* Success Modal */}
-      <Modal visible={showSuccess} animationType="fade" transparent={true}>
-        <View className="flex-1 bg-black/60 items-center justify-center p-6">
-          <View className={`w-full max-w-sm rounded-3xl p-8 items-center shadow-2xl ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`}>
-            <View className="w-20 h-20 bg-green-100 rounded-full items-center justify-center mb-6">
-              <CheckCircle2 size={48} color="#22c55e" />
-            </View>
-            <Text className={`text-2xl font-bold text-center mb-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-              Checkout Complete!
-            </Text>
-            <Text className={`text-center mb-8 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-              Order has been processed successfully.
-            </Text>
-            <TouchableOpacity 
-              onPress={() => {
-                setShowSuccess(false);
-                setActiveCustomer(null);
-              }}
-              className="bg-blue-600 w-full p-4 rounded-xl items-center"
-            >
-              <Text className="text-white font-bold text-lg">Back to Store</Text>
-            </TouchableOpacity>
-          </View>
+          </Inspect>
         </View>
       </Modal>
     </View>
