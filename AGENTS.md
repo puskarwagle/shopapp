@@ -53,6 +53,10 @@ Workflow: `.github/workflows/build-android.yml`
 
 - `npm run web` — no build required; the primary daily dev loop.
 
+### Web hosting (GitHub Pages)
+
+Workflow: `.github/workflows/deploy-web.yml` — push to `main` → `npx expo export -p web` → deploys `dist/` to `https://puskarwagle.github.io/shopapp/`. Requires repo Settings → Pages → Source: **GitHub Actions** (one-time). `app.json` pins `web.output: single` + `experiments.baseUrl: /shopapp` so assets resolve under the subpath; `googleSignIn()` redirects back to the current origin + subpath, so login works on localhost, LAN, and Pages without code changes.
+
 ### Phone testing over LAN (touch + interact)
 
 Test the web app on a real phone (touch, camera, etc.) over the local network:
@@ -159,7 +163,7 @@ One `profiles` row exists per user (auto-created by a trigger — see `supabase/
 ### Google OAuth Setup
 
 - **Google Cloud Console:** Web OAuth client (redirect URI: `https://<supabase-project>.supabase.co/auth/v1/callback`) + Android OAuth client (package: `com.puskarwagle.shopapp`).
-- **Supabase Dashboard:** Authentication → Providers → Google → Enabled with Web Client ID + Secret. Redirect URLs must include the app origin (e.g. `http://localhost:8081`).
+- **Supabase Dashboard:** Authentication → Providers → Google → Enabled with Web Client ID + Secret. Redirect URLs must include every origin the web app is served from (exact + `/` + `/**` each): `http://localhost:8081`, the LAN IP (`http://<LAN-IP>:8081`), and `https://puskarwagle.github.io/shopapp`.
 - **`src/lib/config.js`:** Contains `GOOGLE_WEB_CLIENT_ID` (public, not a secret).
 - Native builds require the `@react-native-google-signin/google-signin` Expo plugin in `app.json`.
 
@@ -178,7 +182,7 @@ Schema (`supabase/migrations/0003_shops.sql`):
 - RLS scoped to `(select shop_id from profiles where id = auth.uid())` — users only ever see their own shop's data
 
 Owner invite flow:
-- `SettingsMenu` Settings tab shows **Invite Employees** panel (admin only) with the shop's invite code + QR
+- `SettingsScreen` Settings tab shows **Invite Employees** panel (admin only) with the shop's invite code + QR (time-limited, see `0005_dynamic_invites.sql`)
 - Employee opens the app → scans QR / enters code → joins the shop as employee
 
 For family/testing: you and Dad both create accounts; one of you creates a shop, the other scans the QR or types the code.
@@ -186,7 +190,7 @@ For family/testing: you and Dad both create accounts; one of you creates a shop,
 ## Offline-First Sync (how data flows)
 
 - Source of truth: the Zustand store, persisted to AsyncStorage (key `shop-app-storage`). All reads/writes are local and instant — works fully offline.
-- Every write also enqueues a sync op (`syncQueue`, persisted) and attempts a background `flushSync`; failed ops stay queued and retry on next login/`pullAll`. Customer edits (`updateCustomer`) upsert; `deleteCustomer` enqueues a `delete` op.
+- Every write also enqueues a sync op (`syncQueue`, persisted) and attempts a background `flushSync`; failed ops stay queued and retry on next login/`pullAll`. Customer edits (`updateCustomer`) upsert; `deleteCustomer` archives via an `is_deleted: true` upsert (never a `delete` op — ledger + history stay intact); `restoreCustomer` un-archives.
 - `pullAll()` (called from `App.js` on login): flushes the queue, then pulls `products`, `customers`, `transactions` from Supabase and merges by `id` into the store. Local winners on conflicts (last write wins).
 - Keys come from `src/lib/config.js` (committed — the URL + anon key are public by design; data protection = RLS + auth). `.env` is only used by local dev/metro and is NOT needed for CI builds.
 
@@ -204,11 +208,11 @@ A global `product_catalog` table (`supabase/migrations/0004_product_catalog.sql`
 
 ## App Structure (see codemap.md)
 
-Entry: `index.js` → `App.js` (stack: Login or Main tabs). Tabs: Customers, Menu (dummy center button that opens SettingsMenu popover), History, and Inventory (admin only). `CheckoutScreen` and `CustomerProfileScreen` are stack screens pushed on top (slide_from_bottom animation). The app is wrapped in `SafeAreaProvider`; the tab bar and screen headers use safe-area insets. `CustomerProfileScreen` shows/edits a customer (via `updateCustomer`/`deleteCustomer`) and their filtered transaction history.
+Entry: `index.js` → `App.js` (stack: Login or Main tabs). Tabs: Customers, History, Settings, and Inventory (admin only). Every screen is wrapped with the `withInspect` HOC (dev-only passthrough; adds the element-inspect overlay, toggled by the `InspectFab` eye button). `CheckoutScreen` and `CustomerProfileScreen` are stack screens pushed on top (slide_from_bottom animation). The app is wrapped in `SafeAreaProvider`; the tab bar and screen headers use safe-area insets. `CustomerProfileScreen` shows/edits a customer (via `updateCustomer`, archive via `deleteCustomer`, payments via `receivePayment`) and their filtered transaction history.
 
 ## Things to Be Careful About
 
-- `App.js` uses a dummy `Tab.Screen name="Menu"` with a custom `tabBarButton` — do not convert it to a real screen.
-- `SettingsMenu.js` handles its own `isOpen` state via props; overlay + scale/translate animations controlled by Reanimated `withTiming`.
+- Settings is a real tab (`SettingsScreen`); the old dummy `Menu` screen / `SettingsMenu` popover is gone from `App.js` (`SettingsMenu.js` still exists on disk, unwired — don't revive it, delete it if cleaning up).
+- `withInspect` / `InspectFab` / `InspectOverlay` are dev-only (`__DEV__` passthrough in production). Wrap new screen elements with `<Inspect id="screen-element-role">` (see `.agents/skills/inspect-all/SKILL.md`).
 - Supabase keys are baked into `src/lib/config.js` (committed on purpose — the URL + anon key are public by design; RLS + auth protect the data). `.env` may override for local dev but is NOT needed, and never commit real secrets beyond these public keys.
 - Do not add runtime comments unless asked; match the existing terse, comment-minimal style.

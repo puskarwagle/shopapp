@@ -14,7 +14,7 @@ App.js                        → Root: NavigationContainer + native-stack
                                 + CustomerProfileScreen (pushed, slide_from_bottom)
 ```
 
-`App.js` defines the tab bar, the custom center Menu button (dummy `Menu` screen with a custom `tabBarButton`), and conditionally renders the Inventory tab only for admins. The `SettingsMenu` popover is rendered on top of the tabs, driven by `isMenuOpen` local state. `CheckoutScreen` and `CustomerProfileScreen` are stack screens (not tabs) — `CheckoutScreen` is pushed from the Customers tab when a customer is selected, and `CustomerProfileScreen` is pushed from Checkout or History. The whole app is wrapped in `SafeAreaProvider`; the tab bar and screen headers use safe-area insets.
+`App.js` defines the tab bar (Customers, Inventory for admins, History, Settings) and conditionally renders the Inventory tab only for admins. Every tab/stack screen is wrapped with the `withInspect` HOC — a dev-only passthrough (returns the original component outside `__DEV__`) that mounts the element-inspect overlay; the `InspectFab` eye button toggles inspect mode. `CheckoutScreen` and `CustomerProfileScreen` are stack screens (not tabs) — `CheckoutScreen` is pushed from the Customers tab when a customer is selected, and `CustomerProfileScreen` is pushed from Checkout or History. The whole app is wrapped in `SafeAreaProvider`; the tab bar and screen headers use safe-area insets.
 
 ## Root Files
 
@@ -22,13 +22,14 @@ App.js                        → Root: NavigationContainer + native-stack
 | --- | --- |
 | `App.js` | Navigation container, stack, tab bar, custom center menu button |
 | `index.js` | App entry point (Expo) |
-| `app.json` | Expo app config |
+| `app.json` | Expo app config (web `output: single` + `experiments.baseUrl: /shopapp` for GitHub Pages subpath) |
 | `package.json` | Scripts + dependencies; `test` (Vitest), `build:android` (local APK), no lint script |
 | `babel.config.js`, `metro.config.js`, `tailwind.config.js` | NativeWind + build config |
 | `global.css` | NativeWind CSS entry (imported in `App.js`); includes desktop phone-frame styling (430px constrained viewport, dark mode bezel) |
 | `modernization-plan.md` | UI/UX roadmap and CI deployment plan |
 | `LOCAL_BUILD.md` | Step-by-step guide to building the Android APK locally (prereqs, JDK 17, install) |
 | `.github/workflows/build-android.yml` | CI: Android APK build (`assembleRelease`, debug-signed, **arm64-v8a only**) on push/PR to `main` |
+| `.github/workflows/deploy-web.yml` | CI: `expo export -p web` + deploy to GitHub Pages (`https://puskarwagle.github.io/shopapp/`) on push to `main` |
 | `patches/` | Patch files applied via `patch-package` (runs automatically on `npm install`) |
 | `scrapped_sites_data/` | Scraped source data + extraction/seeding scripts for the catalog (`fasto/`, `merokirana/`); not part of app runtime |
 
@@ -41,7 +42,7 @@ Versioning: `app.json` + `package.json` hold the semver `version` (`0.2.1`). Sto
 | --- | --- |
 | `supabase.js` | Supabase client from `config.js`; exports `isSupabaseConfigured`; `detectSessionInUrl` enabled on web for OAuth redirects |
 | `config.js` | Committed URL + anon key + `GOOGLE_WEB_CLIENT_ID` (public by design; RLS + auth protect data). Not secrets |
-| `auth.js` | `configureGoogleSignIn()` — configures native Google SDK; `googleSignIn()` — native ID token or web OAuth redirect; `deriveRole(email)`; `ensureProfile(id, email)` → async lookup/insert of `profiles` row |
+| `auth.js` | `configureGoogleSignIn()` — configures native Google SDK; `googleSignIn()` — native ID token or web OAuth redirect (web `redirectTo` = current origin + subpath, so localhost, LAN, and Pages URLs all work); `deriveRole(email)`; `ensureProfile(id, email)` → async lookup/insert of `profiles` row |
 | `search.js` | `createFuse(items, keys)` + `smartSearch(items, query, fuse)` — fuzzy + tier-ranked search (used by InventoryScreen for catalog + inventory) |
 
 ### `src/store/useStore.js`
@@ -57,7 +58,9 @@ Single Zustand store (persisted as `shop-app-storage`). Export includes `uid()` 
 - `cart` `{ id, name, price, quantity }`, `addToCart`, `removeFromCart`, `clearCart`
 - `products`, `customers` — DB-backed lists (offline-first); rows always tagged with `shop_id`
 - `productCatalog`, `catalogCategories`, `fetchCatalog()` — global Fasto reference data from `product_catalog` table (read-only for employees, writable by admins)
-- `addProduct`, `updateProduct`, `deleteProduct`, `addCustomer`, `updateCustomer`, `deleteCustomer` — apply locally, then enqueue sync (`deleteCustomer` enqueues a `delete` op)
+- `addProduct`, `updateProduct`, `deleteProduct`, `addCustomer`, `updateCustomer` — apply locally, then enqueue sync. `deleteCustomer` archives via `is_deleted: true` upsert (ledger + history kept); `restoreCustomer` un-archives
+- `addToCustomerDue`, `receivePayment` — due bookkeeping; `receivePayment` also posts a negative-due `Payment received` history entry
+- `inspectMode`, `inspectTarget`, `inspectInfo`, `inspectCopied` + setters — dev-only inspect overlay state
 - `pushTransaction(order)` — enqueues a checkout into the `transactions` table
 - `createShop(name)` — inserts into `shops` table, sets profile to admin, returns `{ ok, error }`
 - `joinShop(code)` — looks up shop by invite code, updates profile `shop_id`, returns `{ ok, error }`
@@ -74,14 +77,15 @@ Single Zustand store (persisted as `shop-app-storage`). Export includes `uid()` 
 | --- | --- | --- |
 | `LoginScreen.js` | Google Sign-In only | Calls `googleSignIn()` from `auth.js`; on native uses ID token flow, on web uses OAuth redirect; loading + error states; offline message if unconfigured |
 | `ConnectShopScreen.js` | Shop onboarding | Employee scans owner's QR / enters invite code; owner creates a new shop (becomes admin); join calls `supabase.from('shops')` |
-| `CustomersScreen.js` | Customer grid + filter + add | Store-backed `customers`; add-customer modal with optional camera/gallery photo; walk-in entry; selecting sets `activeCustomer` → pushes Checkout |
-| `CheckoutScreen.js` | Product grid + cart + checkout | Stack screen (slide_from_bottom); store-backed `products`; tap image to add, red `-` overlay to remove, qty badge, gradient text overlay; back button + customer link → CustomerProfile; summary modal (due amount) + success modal; on confirm → `addToHistory` + `pushTransaction` |
-| `CustomerProfileScreen.js` | Customer details + edit + history | Stack screen (slide_from_bottom); pulls `customerId`/`customerName` from route params; shows photo, due, transaction count, total spent, and that customer's filtered `history`; edit mode edits name/due/photo via `updateCustomer`, delete with confirm via `deleteCustomer`; works for customers not in the local list (history-only, read caps) |
+| `CustomersScreen.js` | Customer grid + filter + add | Store-backed `customers` (archived rows hidden behind filter); add-customer modal with optional camera/gallery photo; walk-in entry; selecting sets `activeCustomer` → pushes Checkout |
+| `CheckoutScreen.js` | Product grid + cart + checkout | Stack screen (slide_from_bottom); store-backed `products`; tap image to add, red `-` overlay to remove, qty badge, gradient text overlay; back button + customer link → CustomerProfile; summary modal (due amount posts to the customer ledger via `addToCustomerDue`) + success modal; on confirm → `addToHistory` + `pushTransaction` |
+| `CustomerProfileScreen.js` | Customer details + edit + history | Stack screen (slide_from_bottom); pulls `customerId`/`customerName` from route params; shows photo, due, transaction count, total spent, and that customer's filtered `history`; edit mode edits name/due/photo via `updateCustomer`, archive/restore via `deleteCustomer`/`restoreCustomer`, payments via `receivePayment`; works for customers not in the local list (history-only, read caps) |
+| `SettingsScreen.js` | Settings tab | Dark mode, font/thumbnail sliders, shop invite panel (code + QR with countdown), logout |
 | `InventoryScreen.js` | Admin product management | Store-backed `products`; add-product modal with two flows: **Browse Catalog** (category grid → product list → set price/stock) or **Add Custom Product** (name, price, stock, photo via camera/gallery); delete with Alert confirm; fuzzy **smart search** over catalog (by name/brand/subcategory) and over the shop's own inventory via `src/lib/search.js` |
-| `HistoryScreen.js` | Full transaction history | Now a bottom tab; reads `store.history` (merged from local + `transactions` pull); tapping a customer links to CustomerProfile |
+| `HistoryScreen.js` | Full transaction history | Now a bottom tab; reads `store.history` (merged from local + `transactions` pull); payment entries render as `Payment received` rows; tapping a customer links to CustomerProfile |
 
-### `src/components/SettingsMenu.js`
-Animated bottom popover with two tabs: **History** (last 5 transactions, tap → full HistoryScreen) and **Settings** (dark mode switch, typography slider, thumbnail slider). Positioned above the tab bar; its own overlay press-to-close; slider interactions stop propagation.
+### `src/components/` inspect overlay (dev only)
+`withInspect` HOC wraps screens (passthrough outside `__DEV__`); `Inspect` tags elements with stable `screen-element-role` ids (`React.cloneElement`, zero layout impact); `InspectOverlay` shows component + `file:line` on hover and auto-copies the id after 2s; `InspectFab` (eye button) toggles `inspectMode`. Wrapping skill: `.agents/skills/inspect-all/SKILL.md`. `SettingsMenu.js` is still on disk but no longer wired into `App.js` (replaced by the Settings tab).
 
 ## Offline-First Sync (how data flows)
 
@@ -96,6 +100,9 @@ Animated bottom popover with two tabs: **History** (last 5 transactions, tap →
 - `0002_profiles.sql`: `profiles` (id → auth.users, email, role default `'employee'`) + a trigger that auto-creates a row when an account is added in the dashboard. RLS read all / update own.
 - `0003_shops.sql`: `shops` (id, name unique, invite_code unique, owner_id), `shop_id` added to products/customers/transactions/profiles. RLS scoped by `(select shop_id from profiles where id = auth.uid())`.
 - `0004_product_catalog.sql`: `product_catalog` — global reference data (~400+ products from Fasto: name, price, marked_price, discount_percent, category, subcategory, image_url, brand). Not shop-scoped. RLS: all authenticated read, admin-only write. Indexes on category + brand.
+- `0005_dynamic_invites.sql`: `shop_invites` — time-limited (10 min) owner-generated invite tokens; replaces the static `shops.invite_code` for onboarding.
+- `0006_shop_fk_notnull.sql`: real FK to `shops` + `shop_id NOT NULL` on products/customers/transactions (previously RLS-only).
+- `0007_customers_soft_delete.sql`: `customers.is_deleted` (default false) + index; archiving keeps ledger balance + history intact.
 
 Deployed to the Supabase project automatically by the dashboard GitHub integration when merged to `main`.
 
@@ -104,4 +111,4 @@ Deployed to the Supabase project automatically by the dashboard GitHub integrati
 - All currency shown as `Rs.` (`.toFixed(2)`).
 - Dark mode: every screen colors via `isDarkMode` ternary branches.
 - Typography/thumbnails scale by multiplying base sizes with `fontSizeScale` / `thumbnailScale`.
-- Role gating: `App.js:24` → `user?.role === 'admin'` controls the Inventory tab.
+- Role gating: `App.js:37` → `user?.role === 'admin'` controls the Inventory tab.
