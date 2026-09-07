@@ -3,17 +3,19 @@ import { View, Text, FlatList, TouchableOpacity } from 'react-native';
 import { Calendar, User, CreditCard, ChevronRight } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import useStore from '../store/useStore';
+import Inspect from '../components/Inspect';
 
 export default function HistoryScreen() {
   const { history, isDarkMode, fontSizeScale } = useStore();
   const navigation = useNavigation();
 
   const renderHistoryItem = ({ item }) => (
-    <View 
-      className={`m-4 p-5 rounded-3xl border shadow-sm ${
-        isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'
-      }`}
-    >
+    <Inspect id="history-list-item">
+      <View
+        className={`m-4 p-5 rounded-3xl border shadow-sm ${
+          isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'
+        }`}
+      >
       <View className="flex-row justify-between items-start mb-4">
         <View className="flex-1">
           <TouchableOpacity
@@ -48,13 +50,28 @@ export default function HistoryScreen() {
               Due: Rs. {item.dueAmount.toFixed(2)}
             </Text>
           )}
+          {item.dueAmount < 0 && (
+            <Text className="text-green-600 text-xs font-medium" style={{ fontSize: 10 * fontSizeScale }}>
+              Paid: Rs. {(-item.dueAmount).toFixed(2)}
+            </Text>
+          )}
         </View>
       </View>
 
       <View className={`h-px mb-4 ${isDarkMode ? 'bg-slate-800' : 'bg-slate-50'}`} />
 
       <View className="space-y-2">
-        {item.items.map((prod, idx) => (
+        {item.dueAmount < 0 ? (
+          <View className="flex-row justify-between items-center">
+            <Text className={isDarkMode ? 'text-slate-400' : 'text-slate-600'} style={{ fontSize: 14 * fontSizeScale }}>
+              Payment received
+            </Text>
+            <Text className="text-green-600" style={{ fontSize: 13 * fontSizeScale }}>
+              Rs. {(-item.dueAmount).toFixed(2)}
+            </Text>
+          </View>
+        ) : (
+          item.items.map((prod, idx) => (
           <View key={idx} className="flex-row justify-between items-center">
             <Text className={isDarkMode ? 'text-slate-400' : 'text-slate-600'} style={{ fontSize: 14 * fontSizeScale }}>
               {prod.name} x {prod.quantity}
@@ -63,9 +80,11 @@ export default function HistoryScreen() {
               Rs. {(prod.price * prod.quantity).toFixed(2)}
             </Text>
           </View>
-        ))}
+          ))
+        )}
       </View>
     </View>
+    </Inspect>
   );
 
   return (
@@ -76,11 +95,13 @@ export default function HistoryScreen() {
         keyExtractor={item => item.id}
         contentContainerStyle={{ paddingBottom: 40 }}
         ListEmptyComponent={
-          <View className="flex-1 items-center justify-center pt-20">
-            <Text className={isDarkMode ? 'text-slate-600' : 'text-slate-400'} style={{ fontSize: 16 * fontSizeScale }}>
-              No transactions yet.
-            </Text>
-          </View>
+          <Inspect id="history-empty-state">
+            <View className="flex-1 items-center justify-center pt-20">
+              <Text className={isDarkMode ? 'text-slate-600' : 'text-slate-400'} style={{ fontSize: 16 * fontSizeScale }}>
+                No transactions yet.
+              </Text>
+            </View>
+          </Inspect>
         }
       />
     </View>
