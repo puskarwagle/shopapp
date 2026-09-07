@@ -25,7 +25,11 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "single"
+    },
+    "experiments": {
+      "baseUrl": "/shopapp"
     },
     "plugins": [
       "@react-native-google-signin/google-signin"
