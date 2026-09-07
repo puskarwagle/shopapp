@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, TextInput, Alert, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, TextInput, Alert, Platform, Modal } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, Calendar, CreditCard, Camera, Image as ImageIcon, Pencil, Trash2, Check, Wallet } from 'lucide-react-native';
+import { ChevronLeft, Calendar, CreditCard, Camera, Image as ImageIcon, Pencil, Trash2, Check, Wallet, Banknote, X } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import useStore from '../store/useStore';
+import Inspect from '../components/Inspect';
 
 export default function CustomerProfileScreen() {
-  const { customers, history, updateCustomer, deleteCustomer, isDarkMode, fontSizeScale } = useStore();
+  const { user, customers, history, updateCustomer, deleteCustomer, restoreCustomer, receivePayment, activeCustomer, setActiveCustomer, clearCart, isDarkMode, fontSizeScale } = useStore();
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
@@ -16,15 +17,27 @@ export default function CustomerProfileScreen() {
   const customer = customers.find(c => c.id === customerId);
   const name = customer?.name || customerName || 'Customer';
   const isRealCustomer = !!customer;
+  const isArchived = !!customer?.is_deleted;
 
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(name);
   const [editDue, setEditDue] = useState(customer?.due != null ? String(customer.due) : '');
   const [editImage, setEditImage] = useState(customer?.image || null);
+  const [showPay, setShowPay] = useState(false);
+  const [payAmount, setPayAmount] = useState('');
 
   const customerHistory = history.filter(h => h.customerId === customerId);
   const totalSpent = customerHistory.reduce((sum, h) => sum + (h.total || 0), 0);
-  const due = customer?.due || customerHistory.reduce((sum, h) => sum + (h.dueAmount || 0), 0);
+  const due = customer ? (Number(customer.due) || 0) : customerHistory.reduce((sum, h) => sum + (h.dueAmount || 0), 0);
+  const isPayment = (item) => (Number(item.dueAmount) || 0) < 0;
+
+  const handleReceivePayment = () => {
+    const value = parseFloat(payAmount) || 0;
+    if (value <= 0) return;
+    receivePayment(customerId, name, value, user?.email);
+    setPayAmount('');
+    setShowPay(false);
+  };
 
   const startEditing = () => {
     setEditName(customer?.name || customerName || '');
@@ -59,18 +72,29 @@ export default function CustomerProfileScreen() {
 
   const doDelete = () => {
     deleteCustomer(customerId);
-    navigation.goBack();
+    if (activeCustomer?.id === customerId) {
+      setActiveCustomer(null);
+      clearCart();
+      navigation.navigate('Main');
+    } else {
+      navigation.goBack();
+    }
   };
 
   const confirmDelete = () => {
+    const msg = `Archive "${name}"? Sales history and balance are kept and it can be restored later.`;
     if (Platform.OS === 'web') {
-      if (window.confirm(`Delete "${name}"? This cannot be undone.`)) doDelete();
+      if (window.confirm(msg)) doDelete();
       return;
     }
-    Alert.alert('Delete Customer', `Remove "${name}"? This cannot be undone.`, [
+    Alert.alert('Archive Customer', msg, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: doDelete },
+      { text: 'Archive', style: 'destructive', onPress: doDelete },
     ]);
+  };
+
+  const handleRestore = () => {
+    restoreCustomer(customerId);
   };
 
   const renderHistoryItem = ({ item }) => (
@@ -103,13 +127,28 @@ export default function CustomerProfileScreen() {
               Due: Rs. {item.dueAmount.toFixed(2)}
             </Text>
           )}
+          {isPayment(item) && (
+            <Text className="text-green-600 text-xs font-medium" style={{ fontSize: 10 * fontSizeScale }}>
+              Paid: Rs. {(-item.dueAmount).toFixed(2)}
+            </Text>
+          )}
         </View>
       </View>
 
       <View className={`h-px mb-4 ${isDarkMode ? 'bg-slate-800' : 'bg-slate-50'}`} />
 
       <View className="space-y-2">
-        {item.items.map((prod, idx) => (
+        {isPayment(item) ? (
+          <View className="flex-row justify-between items-center">
+            <Text className={isDarkMode ? 'text-slate-400' : 'text-slate-600'} style={{ fontSize: 14 * fontSizeScale }}>
+              Payment received
+            </Text>
+            <Text className="text-green-600" style={{ fontSize: 13 * fontSizeScale }}>
+              Rs. {(-item.dueAmount).toFixed(2)}
+            </Text>
+          </View>
+        ) : (
+          item.items.map((prod, idx) => (
           <View key={idx} className="flex-row justify-between items-center">
             <Text className={isDarkMode ? 'text-slate-400' : 'text-slate-600'} style={{ fontSize: 14 * fontSizeScale }}>
               {prod.name} x {prod.quantity}
@@ -118,7 +157,8 @@ export default function CustomerProfileScreen() {
               Rs. {(prod.price * prod.quantity).toFixed(2)}
             </Text>
           </View>
-        ))}
+          ))
+        )}
       </View>
     </View>
   );
@@ -214,18 +254,27 @@ export default function CustomerProfileScreen() {
               <Text className="text-white font-bold text-lg" style={{ fontSize: 18 * fontSizeScale }}>Save Changes</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={confirmDelete}
-              className="flex-row items-center justify-center gap-2 py-4 rounded-2xl border active:opacity-70"
-              style={{ borderColor: 'rgba(239,68,68,0.3)' }}
-            >
-              <Trash2 size={18} color="#ef4444" />
-              <Text className="font-bold text-red-500" style={{ fontSize: 16 * fontSizeScale }}>Delete Customer</Text>
-            </TouchableOpacity>
+            {!isArchived && (
+              <TouchableOpacity
+                onPress={confirmDelete}
+                className="flex-row items-center justify-center gap-2 py-4 rounded-2xl border active:opacity-70"
+                style={{ borderColor: 'rgba(239,68,68,0.3)' }}
+              >
+                <Trash2 size={18} color="#ef4444" />
+                <Text className="font-bold text-red-500" style={{ fontSize: 16 * fontSizeScale }}>Archive Customer</Text>
+              </TouchableOpacity>
+            )}
           </View>
         ) : (
           <>
             <View className={`mx-4 mt-4 px-6 py-6 rounded-3xl border shadow-sm ${cardClass}`}>
+              {isArchived && (
+                <View className={`mb-4 px-3 py-2 rounded-xl self-start ${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                  <Text className={`font-bold uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`} style={{ fontSize: 11 * fontSizeScale }}>
+                    Archived — history kept
+                  </Text>
+                </View>
+              )}
               <View className="flex-row items-center">
                 <Image
                   source={{ uri: customer?.image || 'https://via.placeholder.com/150/f1f5f9/64748b?text=' + encodeURIComponent(name.charAt(0).toUpperCase()) }}
@@ -235,9 +284,9 @@ export default function CustomerProfileScreen() {
                   <Text className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`} style={{ fontSize: 22 * fontSizeScale }} numberOfLines={1}>
                     {name}
                   </Text>
-                  <View className="flex-row items-center gap-1 mt-1">
-                    <Wallet size={14} color={due > 0 ? '#ef4444' : (isDarkMode ? '#64748b' : '#94a3b8')} />
-                    <Text className={`${due > 0 ? 'text-red-500 font-medium' : (isDarkMode ? 'text-slate-500' : 'text-slate-400')}`} style={{ fontSize: 14 * fontSizeScale }}>
+                  <View className="flex-row items-center gap-1.5 mt-1">
+                    <Wallet size={20} color={due > 0 ? '#ef4444' : (isDarkMode ? '#64748b' : '#94a3b8')} />
+                    <Text className={`${due > 0 ? 'text-red-500' : (isDarkMode ? 'text-slate-500' : 'text-slate-400')}`} style={{ fontSize: 22 * fontSizeScale, fontWeight: '900' }}>
                       Due: Rs. {Number(due).toFixed(2)}
                     </Text>
                   </View>
@@ -262,12 +311,66 @@ export default function CustomerProfileScreen() {
                   </Text>
                 </View>
               </View>
+
+              {isRealCustomer && !isArchived && due > 0 && (
+                <TouchableOpacity
+                  onPress={() => setShowPay(true)}
+                  className="mt-4 flex-row items-center justify-center gap-2 bg-green-600 py-4 rounded-2xl shadow-lg active:opacity-80"
+                >
+                  <Banknote size={18} color="white" />
+                  <Text className="text-white font-bold text-lg" style={{ fontSize: 18 * fontSizeScale }}>Receive Payment</Text>
+                </TouchableOpacity>
+              )}
+              {isArchived && (
+                <TouchableOpacity
+                  onPress={handleRestore}
+                  className="mt-4 flex-row items-center justify-center gap-2 bg-blue-600 py-4 rounded-2xl shadow-lg active:opacity-80"
+                >
+                  <Check size={18} color="white" />
+                  <Text className="text-white font-bold text-lg" style={{ fontSize: 18 * fontSizeScale }}>Restore Customer</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {customerHistory.map(item => renderHistoryItem({ item }))}
           </>
         )}
       </ScrollView>
+
+      <Modal visible={showPay} animationType="slide" transparent={true}>
+        <View className="flex-1 bg-black/80 justify-end">
+          <View className={`rounded-t-3xl p-6 ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`} style={{ paddingBottom: insets.bottom + 24 }}>
+            <View className="flex-row justify-between items-center mb-2">
+              <Text className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`} style={{ fontSize: 24 * fontSizeScale }}>Receive Payment</Text>
+              <TouchableOpacity onPress={() => { setShowPay(false); setPayAmount(''); }}>
+                <X size={24} color={isDarkMode ? '#94a3b8' : '#64748b'} />
+              </TouchableOpacity>
+            </View>
+            <Text className={`mb-6 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`} style={{ fontSize: 14 * fontSizeScale }}>
+              Outstanding due: Rs. {Number(due).toFixed(2)}
+            </Text>
+            <Text className={`font-medium mb-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-700'}`} style={{ fontSize: 14 * fontSizeScale }}>Amount received (Rs.)</Text>
+            <TextInput
+              autoFocus={true}
+              className={`p-4 rounded-xl text-lg border mb-6 ${isDarkMode ? 'bg-black border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}
+              style={{ outlineStyle: 'none' }}
+              placeholder="0"
+              placeholderTextColor={isDarkMode ? '#475569' : '#94a3b8'}
+              keyboardType="numeric"
+              returnKeyType="done"
+              value={payAmount}
+              onChangeText={setPayAmount}
+              onSubmitEditing={handleReceivePayment}
+            />
+            <TouchableOpacity
+              onPress={handleReceivePayment}
+              className="bg-green-600 p-5 rounded-2xl items-center shadow-lg"
+            >
+              <Text className="text-white font-bold text-xl" style={{ fontSize: 20 * fontSizeScale }}>Confirm Payment</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
