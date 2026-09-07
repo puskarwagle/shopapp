@@ -59,6 +59,7 @@ Single Zustand store (persisted as `shop-app-storage`). Export includes `uid()` 
 - `products`, `customers` — DB-backed lists (offline-first); rows always tagged with `shop_id`
 - `productCatalog`, `catalogCategories`, `fetchCatalog()` — global Fasto reference data from `product_catalog` table (read-only for employees, writable by admins)
 - `addProduct`, `updateProduct`, `deleteProduct`, `addCustomer`, `updateCustomer` — apply locally, then enqueue sync. `deleteCustomer` archives via `is_deleted: true` upsert (ledger + history kept); `restoreCustomer` un-archives
+- `seedSampleInventory()` — one-tap demo stock: adds 1 product per category from `src/lib/seedInventory.js` (59 Fasto-based guesses), skipping names already in inventory; returns `{ ok, added, skipped }`
 - `addToCustomerDue`, `receivePayment` — due bookkeeping; `receivePayment` also posts a negative-due `Payment received` history entry
 - `inspectMode`, `inspectTarget`, `inspectInfo`, `inspectCopied` + setters — dev-only inspect overlay state
 - `pushTransaction(order)` — enqueues a checkout into the `transactions` table
