@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { DEV_BYPASS_AUTH } from '../lib/config';
 import { SEED_PRODUCTS } from '../lib/seedInventory';
 import { SEED_CUSTOMERS } from '../lib/seedCustomers';
 
@@ -309,11 +310,12 @@ const useStore = create(
       },
 
       enqueueSync: (op) => {
+        if (DEV_BYPASS_AUTH) return;
         set((state) => ({ syncQueue: [...state.syncQueue, op] }));
         setTimeout(() => get().flushSync(), 500);
       },
       flushSync: async () => {
-        if (!isSupabaseConfigured) return;
+        if (DEV_BYPASS_AUTH || !isSupabaseConfigured) return;
         const queue = get().syncQueue;
         if (queue.length === 0) return;
         set({ isSyncing: true });

@@ -19,6 +19,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import ConnectShopScreen from './src/screens/ConnectShopScreen';
 import useStore from './src/store/useStore';
 import { supabase, isSupabaseConfigured } from './src/lib/supabase';
+import { DEV_BYPASS_AUTH } from './src/lib/config';
 import { ensureProfile, deriveRole, configureGoogleSignIn } from './src/lib/auth';
 import withInspect from './src/components/withInspect';
 import InspectFab from './src/components/InspectFab';
@@ -115,6 +116,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (DEV_BYPASS_AUTH) {
+      if (!useStore.getState().user) setUser({ id: 'dev-local', email: 'dev@local', role: 'admin' });
+      if (!useStore.getState().shopId) setShopId('local', useStore.getState().shopName || 'Dev Shop');
+      setBooting(false);
+    }
+  }, [setUser, setShopId]);
+
+  useEffect(() => {
+    if (DEV_BYPASS_AUTH) return;
     if (!isSupabaseConfigured) {
       setBooting(false);
       return;
@@ -136,6 +146,7 @@ export default function App() {
   }, [setUser, setShopId]);
 
   useEffect(() => {
+    if (DEV_BYPASS_AUTH) return;
     if (user?.email && shopId && shopId !== 'local') pullAll();
   }, [user?.email, shopId]);
 
