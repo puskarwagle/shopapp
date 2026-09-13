@@ -21,6 +21,7 @@ const SettingsScreen = () => {
     fontSizeScale, setFontSizeScale,
     thumbnailScale, setThumbnailScale,
     customerView, setCustomerView,
+    inventoryView, setInventoryView,
     customers, restoreCustomer,
     logout,
     user,
@@ -133,6 +134,28 @@ const SettingsScreen = () => {
                 className={`px-4 py-2 rounded-lg ${customerView === v ? 'bg-blue-600' : ''}`}
               >
                 <Text className={`font-bold capitalize ${customerView === v ? 'text-white' : (isDarkMode ? 'text-slate-400' : 'text-slate-500')}`}>
+                  {v}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      </Inspect>
+
+      <Inspect id="settings-inventory-view">
+        <View className="flex-row justify-between items-center mb-6">
+          <View className="flex-row items-center gap-3">
+            <LayoutList size={20} color={isDarkMode ? 'white' : '#0f172a'} />
+            <Text className={`text-base font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Inventory Layout</Text>
+          </View>
+          <View className={`flex-row rounded-xl p-1 ${isDarkMode ? 'bg-slate-900' : 'bg-slate-100'}`}>
+            {['grid', 'list'].map(v => (
+              <Pressable
+                key={v}
+                onPress={() => setInventoryView(v)}
+                className={`px-4 py-2 rounded-lg ${inventoryView === v ? 'bg-blue-600' : ''}`}
+              >
+                <Text className={`font-bold capitalize ${inventoryView === v ? 'text-white' : (isDarkMode ? 'text-slate-400' : 'text-slate-500')}`}>
                   {v}
                 </Text>
               </Pressable>

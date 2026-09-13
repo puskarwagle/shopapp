@@ -14,6 +14,7 @@ import CheckoutScreen from './src/screens/CheckoutScreen';
 import JournalCheckoutScreen from './src/screens/JournalCheckoutScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import CustomerProfileScreen from './src/screens/CustomerProfileScreen';
+import ProductProfileScreen from './src/screens/ProductProfileScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import ConnectShopScreen from './src/screens/ConnectShopScreen';
@@ -34,6 +35,7 @@ const InspectableSettings = withInspect(SettingsScreen);
 const InspectableCheckout = withInspect(CheckoutScreen);
 const InspectableJournalCheckout = withInspect(JournalCheckoutScreen);
 const InspectableCustomerProfile = withInspect(CustomerProfileScreen);
+const InspectableProductProfile = withInspect(ProductProfileScreen);
 
 function MainTabs() {
   const { user, isDarkMode } = useStore();
@@ -167,12 +169,13 @@ export default function App() {
                 <Stack.Screen name="Checkout" component={InspectableCheckout} options={{ animation: 'slide_from_bottom' }} />
                 <Stack.Screen name="JournalCheckout" component={InspectableJournalCheckout} options={{ animation: 'slide_from_bottom' }} />
                 <Stack.Screen name="CustomerProfile" component={InspectableCustomerProfile} options={{ animation: 'slide_from_bottom' }} />
+                <Stack.Screen name="ProductProfile" component={InspectableProductProfile} options={{ animation: 'slide_from_bottom' }} />
               </>
             )}
           </Stack.Navigator>
           <StatusBar style={isDarkMode ? 'light' : 'dark'} />
         </NavigationContainer>
-        <InspectFab />
+        {/* <InspectFab /> */}
       </GestureHandlerRootView>
     </SafeAreaProvider>
   );

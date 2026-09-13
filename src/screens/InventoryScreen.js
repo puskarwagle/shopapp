@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, Modal, TextInput, ScrollView, Alert, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Plus, Camera, Image as ImageIcon, X, Trash2, Search, ChevronLeft, Tag, Package, Sparkles } from 'lucide-react-native';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { useNavigation } from '@react-navigation/native';
+import { Plus, Camera, Image as ImageIcon, X, Search, ChevronLeft, Tag, Package, Sparkles, LayoutList, LayoutGrid } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import useStore from '../store/useStore';
 import { createFuse, smartSearch } from '../lib/search';
@@ -37,10 +39,14 @@ export default function InventoryScreen() {
   const [editStock, setEditStock] = useState('');
   const [invSearch, setInvSearch] = useState('');
   const {
-    products, addProduct, deleteProduct, seedSampleInventory, isDarkMode, fontSizeScale, thumbnailScale,
-    productCatalog, catalogCategories, fetchCatalog,
+    products, addProduct, seedSampleInventory, isDarkMode, fontSizeScale,
+    productCatalog, catalogCategories, fetchCatalog, inventoryView, setInventoryView,
   } = useStore();
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
+  const isGrid = inventoryView === 'grid';
+  const webText = Platform.OS === 'web' ? { cursor: 'pointer', userSelect: 'none' } : null;
 
   useEffect(() => {
     fetchCatalog();
@@ -125,44 +131,59 @@ export default function InventoryScreen() {
     setNewProduct({ name: '', price: '', stock: '', image: null });
   };
 
-  const confirmDelete = (product) => {
-    const doDelete = () => deleteProduct(product.id);
-    if (Platform.OS === 'web') {
-      if (window.confirm(`Delete "${product.name}"?`)) doDelete();
-      return;
-    }
-    Alert.alert('Delete Product', `Remove "${product.name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: doDelete },
-    ]);
-  };
-
-  const renderProduct = ({ item }) => (
+  const renderGrid = ({ item }) => (
     <Inspect id="inventory-product-card">
-    <View
+    <TouchableOpacity
       className={`flex-1 m-2 rounded-2xl shadow-sm border overflow-hidden ${
         isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'
       }`}
-      style={{ transform: [{ scale: thumbnailScale }] }}
+      style={webText}
+      activeOpacity={0.7}
+      onPress={() => navigation.navigate('ProductProfile', { productId: item.id })}
     >
       <Image source={{ uri: item.image }} className="w-full aspect-square" />
       <View className="p-3">
         <Text
           className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}
-          style={{ fontSize: 14 * fontSizeScale }}
+          style={{ fontSize: 14 * fontSizeScale, ...webText }}
           numberOfLines={1}
         >
           {item.name}
         </Text>
         <View className="flex-row justify-between items-center mt-1">
-          <Text className="text-blue-500 font-semibold" style={{ fontSize: 13 * fontSizeScale }}>Rs. {item.price.toFixed(2)}</Text>
-          <Text className={isDarkMode ? 'text-slate-500 text-xs' : 'text-slate-400 text-xs'}>Stock: {item.stock}</Text>
+          <Text className="text-blue-500 font-semibold" style={{ fontSize: 12 * fontSizeScale, ...webText }}>Rs. {item.price.toFixed(2)}</Text>
+          <Text className={isDarkMode ? 'text-slate-500 text-xs' : 'text-slate-400 text-xs'} style={webText}>Stock: {item.stock}</Text>
         </View>
-        <TouchableOpacity className="mt-2 items-end" onPress={() => confirmDelete(item)}>
-          <Trash2 size={16} color="#ef4444" />
-        </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
+    </Inspect>
+  );
+
+  const renderRow = ({ item }) => (
+    <Inspect id="inventory-product-row">
+      <TouchableOpacity
+        className={`flex-row items-center px-3 py-3 mb-2 mx-2 rounded-2xl shadow-sm border ${
+          isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'
+        }`}
+        style={webText}
+        activeOpacity={0.7}
+        onPress={() => navigation.navigate('ProductProfile', { productId: item.id })}
+      >
+        <Image source={{ uri: item.image }} className="w-14 h-14 rounded-xl" />
+        <View className="flex-1 ml-3 mr-2">
+          <Text
+            className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}
+            style={{ fontSize: 14 * fontSizeScale, ...webText }}
+            numberOfLines={1}
+          >
+            {item.name}
+          </Text>
+          <View className="flex-row items-center mt-1 gap-2">
+            <Text className="text-blue-500 font-semibold" style={{ fontSize: 13 * fontSizeScale, ...webText }}>Rs. {item.price.toFixed(2)}</Text>
+            <Text className={isDarkMode ? 'text-slate-500' : 'text-slate-400'} style={{ fontSize: 12 * fontSizeScale, ...webText }}>Stock: {item.stock}</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
     </Inspect>
   );
 
@@ -604,8 +625,8 @@ export default function InventoryScreen() {
   };
 
   const renderInventorySearch = () => (
-    <View className={`px-4 pt-4 pb-2 ${isDarkMode ? 'bg-black' : 'bg-slate-50'}`}>
-      <View className={`flex-row items-center rounded-xl px-3 py-2.5 border ${
+    <View className={`px-4 pt-4 pb-2 flex-row items-center gap-2 ${isDarkMode ? 'bg-black' : 'bg-slate-50'}`}>
+      <View className={`flex-1 flex-row items-center rounded-xl px-3 py-2.5 border ${
         isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
       }`}>
         <Search size={18} color={isDarkMode ? '#64748b' : '#94a3b8'} />
@@ -623,6 +644,16 @@ export default function InventoryScreen() {
           </TouchableOpacity>
         )}
       </View>
+      <TouchableOpacity
+        onPress={() => setInventoryView(isGrid ? 'list' : 'grid')}
+        className={`w-11 h-11 items-center justify-center rounded-xl border ${
+          isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'
+        }`}
+      >
+        {isGrid
+          ? <LayoutList size={20} color={isDarkMode ? '#94a3b8' : '#64748b'} />
+          : <LayoutGrid size={20} color={isDarkMode ? '#94a3b8' : '#64748b'} />}
+      </TouchableOpacity>
     </View>
   );
 
@@ -630,11 +661,12 @@ export default function InventoryScreen() {
     <View className={`flex-1 ${isDarkMode ? 'bg-black' : 'bg-slate-50'}`}>
       {renderInventorySearch()}
       <FlatList
+        key={inventoryView}
         data={displayedProducts}
-        renderItem={renderProduct}
+        renderItem={isGrid ? renderGrid : renderRow}
         keyExtractor={item => item.id}
-        numColumns={2}
-        contentContainerStyle={{ padding: 8, paddingBottom: 100 }}
+        numColumns={isGrid ? 2 : 1}
+        contentContainerStyle={{ padding: 8, paddingBottom: tabBarHeight + 24 }}
         ListEmptyComponent={
           <View className="items-center pt-24 px-8">
             <Text className={isDarkMode ? 'text-slate-600' : 'text-slate-400'} style={{ fontSize: 16 * fontSizeScale }}>
@@ -654,7 +686,8 @@ export default function InventoryScreen() {
 
       <Inspect id="inventory-add-btn">
         <TouchableOpacity
-          className="absolute bottom-40 right-6 bg-blue-600 w-14 h-14 rounded-full items-center justify-center shadow-lg"
+          className="absolute right-6 bg-blue-600 w-14 h-14 rounded-full items-center justify-center shadow-lg"
+          style={{ bottom: tabBarHeight + 16 }}
           onPress={() => setShowAddModal(true)}
         >
           <Plus size={28} color="white" />
