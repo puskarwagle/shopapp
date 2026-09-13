@@ -35,7 +35,7 @@ There is **no lint script** in `package.json`, but there is a `test` script (`vi
 
 Workflow: `.github/workflows/build-android.yml`
 
-- **Triggers:** push to `main`, PR to `main`, or manual "Run workflow" in the Actions tab.
+- **Triggers:** manual only (`workflow_dispatch`). Run with `gh workflow run "Build Android APK" --ref main`, or Actions tab → Build Android APK → Run workflow.
 - **Pipeline:** `npm ci` → JDK 17 → Android SDK → `npx expo prebuild --platform android --no-install` → `./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --build-cache --parallel`.
 - **Preconditions for a successful build:**
   - `app.json` MUST define `android.package` (currently `com.puskarwagle.shopapp`). `expo prebuild` fails in CI without it.

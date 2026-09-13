@@ -84,7 +84,11 @@ Roles are stored in the `profiles.role` column (default `'employee'`; set to `'a
 
 `eas build` is **not** configured. Two working paths (both debug-signed, ~46 MB):
 
-1. **GitHub Actions** — push to `main` / PR to `main` / manual run of `.github/workflows/build-android.yml`, then grab `app-release.apk` from the run's Artifacts.
+1. **GitHub Actions (manual only)** — the `Build Android APK` workflow runs **only when triggered by hand** (it does not run on push/PR). Trigger it with:
+   ```bash
+   gh workflow run "Build Android APK" --ref main
+   ```
+   Or via the web UI: repo **Actions** tab → **Build Android APK** → **Run workflow** → **Run workflow**. Then grab `app-release.apk` from the run's Artifacts.
 2. **Local** — needs Android Studio/SDK + JDK 17. The one-liner:
    ```bash
    npm run build:android
