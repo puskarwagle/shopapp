@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, Image, Modal, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Search, UserPlus, Camera, Image as ImageIcon, X, LayoutList, LayoutGrid } from 'lucide-react-native';
@@ -7,6 +7,23 @@ import useStore from '../store/useStore';
 import { useNavigation } from '@react-navigation/native';
 import Inspect from '../components/Inspect';
 
+const avatarFallback = (name) =>
+  'https://placehold.co/150x150/f1f5f9/64748b?text=' + encodeURIComponent((name || 'P').charAt(0).toUpperCase());
+
+function Avatar({ uri, name, className, textClassName, textScale = 1 }) {
+  const [err, setErr] = useState(false);
+  if (!uri || err) {
+    return (
+      <View className={`${className} items-center justify-center bg-slate-200`}>
+        <Text className={`font-bold text-slate-500 ${textClassName || ''}`} style={{ fontSize: 18 * textScale }}>
+          {(name || 'P').charAt(0).toUpperCase()}
+        </Text>
+      </View>
+    );
+  }
+  return <Image source={{ uri }} className={className} onError={() => setErr(true)} />;
+}
+
 export default function CustomersScreen() {
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -14,10 +31,14 @@ export default function CustomersScreen() {
   const [newDue, setNewDue] = useState('');
   const [newImage, setNewImage] = useState(null);
   const [seedMsg, setSeedMsg] = useState('');
-  const { customers, addCustomer, seedSampleCustomers, setActiveCustomer, customerView, setCustomerView, isDarkMode, fontSizeScale, thumbnailScale } = useStore();
+  const { customers, addCustomer, seedSampleCustomers, backfillSamplePhotos, setActiveCustomer, customerView, setCustomerView, isDarkMode, fontSizeScale } = useStore();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const isGrid = customerView === 'grid';
+
+  useEffect(() => {
+    backfillSamplePhotos();
+  }, []);
 
   const activeCustomers = customers.filter(c => !c.is_deleted);
 
@@ -38,7 +59,9 @@ export default function CustomersScreen() {
 
   const handleSeed = () => {
     const res = seedSampleCustomers();
-    setSeedMsg(res.ok ? `Added ${res.added} customers.` : (res.error || 'Could not seed.'));
+    setSeedMsg(res.ok
+      ? `Added ${res.added} customers${res.refreshed ? `, refreshed ${res.refreshed} photos` : ''}.`
+      : (res.error || 'Could not seed.'));
   };
 
   const pickImage = async (useCamera = false) => {
@@ -60,7 +83,7 @@ export default function CustomersScreen() {
     addCustomer({
       name,
       due: parseFloat(newDue) || 0,
-      image: newImage || 'https://via.placeholder.com/150/f1f5f9/64748b?text=' + encodeURIComponent(name.charAt(0).toUpperCase()),
+      image: newImage || avatarFallback(name),
     });
     setNewName('');
     setNewDue('');
@@ -94,7 +117,7 @@ export default function CustomersScreen() {
             </Text>
           )}
         </View>
-        <Image source={{ uri: item.image }} className="w-12 h-12 rounded-full" />
+        <Avatar uri={item.image} name={item.name} className="w-12 h-12 rounded-full" textScale={fontSizeScale} />
       </TouchableOpacity>
     </Inspect>
   );
@@ -106,28 +129,28 @@ export default function CustomersScreen() {
           isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'
         }`}
         onPress={() => handleSelectCustomer(item)}
-        style={{ transform: [{ scale: thumbnailScale }] }}
       >
-        <Image
-          source={{ uri: item.image }}
+        <Avatar
+          uri={item.image}
+          name={item.name}
           className="w-full aspect-square"
+          textScale={fontSizeScale * 2}
         />
-        <View className="p-3 flex-row justify-between items-center">
+        <View className="p-3">
           <Text
-            className={`font-bold flex-1 mr-2 ${isDarkMode ? 'text-white' : 'text-slate-800'}`}
+            className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}
             style={{ fontSize: 14 * fontSizeScale }}
             numberOfLines={1}
           >
             {item.name}
           </Text>
-          {item.due > 0 && (
-            <Text
-              className="text-red-500 font-bold"
-              style={{ fontSize: 12 * fontSizeScale }}
-            >
-              Rs. {item.due}
-            </Text>
-          )}
+          <Text
+            className={`font-bold mt-1 ${item.due > 0 ? 'text-red-500' : (isDarkMode ? 'text-slate-500' : 'text-slate-400')}`}
+            style={{ fontSize: 12 * fontSizeScale }}
+            numberOfLines={1}
+          >
+            {item.due > 0 ? `Rs. ${item.due}` : 'No due'}
+          </Text>
         </View>
       </TouchableOpacity>
     </Inspect>
