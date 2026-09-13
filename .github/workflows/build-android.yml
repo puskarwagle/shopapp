@@ -1,11 +1,7 @@
 name: Build Android APK
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-  workflow_dispatch: # Allow manual trigger
+  workflow_dispatch: # Manual trigger only — see README for how to run
 
 jobs:
   build:
