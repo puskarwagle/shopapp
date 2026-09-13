@@ -88,16 +88,19 @@ const SettingsScreen = () => {
             <Type size={20} color={isDarkMode ? 'white' : '#0f172a'} />
             <Text className={`text-base font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Typography</Text>
           </View>
-          <Slider
-            style={{ width: '100%', height: 32 }}
-            minimumValue={0.8}
-            maximumValue={1.5}
-            value={fontSizeScale}
-            onValueChange={setFontSizeScale}
-            minimumTrackTintColor="#3b82f6"
-            maximumTrackTintColor={isDarkMode ? '#334155' : '#e2e8f0'}
-            thumbTintColor="#3b82f6"
-          />
+          <View className="flex-row gap-2">
+            {[1, 2, 4, 6].map(v => (
+              <Pressable
+                key={v}
+                onPress={() => setFontSizeScale(v)}
+                className={`flex-1 py-3 rounded-xl items-center ${fontSizeScale === v ? 'bg-blue-600' : (isDarkMode ? 'bg-slate-900' : 'bg-slate-100')}`}
+              >
+                <Text className={`font-bold ${fontSizeScale === v ? 'text-white' : (isDarkMode ? 'text-slate-400' : 'text-slate-500')}`}>
+                  {v}x
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
       </Inspect>
 
