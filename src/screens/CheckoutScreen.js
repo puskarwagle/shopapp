@@ -8,7 +8,7 @@ import useStore, { uid } from '../store/useStore';
 import Inspect from '../components/Inspect';
 
 export default function CheckoutScreen() {
-  const { user, activeCustomer, setActiveCustomer, cart, addToCart, removeFromCart, clearCart, addToHistory, pushTransaction, addToCustomerDue, isDarkMode, fontSizeScale, thumbnailScale, products } = useStore();
+  const { user, activeCustomer, setActiveCustomer, cart, addToCart, removeFromCart, clearCart, addToHistory, pushTransaction, addToCustomerDue, isDarkMode, fontSizeScale, products } = useStore();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const [showSummary, setShowSummary] = useState(false);
@@ -102,7 +102,6 @@ export default function CheckoutScreen() {
         className={`flex-1 m-2 rounded-2xl shadow-sm overflow-hidden border ${
           isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'
         }`}
-        style={{ transform: [{ scale: thumbnailScale }] }}
       >
         <TouchableOpacity activeOpacity={0.8} onPress={() => addToCart(item)}>
           <Image source={{ uri: item.image }} className="w-full aspect-square" />
@@ -146,7 +145,7 @@ export default function CheckoutScreen() {
               </Text>
               <Text 
                 className="text-blue-300 font-bold"
-                style={{ fontSize: 13 * fontSizeScale }}
+                style={{ fontSize: 12 * fontSizeScale }}
               >
                 Rs. {item.price.toFixed(2)}
               </Text>
