@@ -23,7 +23,7 @@ function CustomerAvatar({ uri, name }) {
 const freshRow = () => ({ key: uid(), productId: null, query: '', rate: '', qty: '1' });
 
 export default function JournalCheckoutScreen() {
-  const { user, activeCustomer, setActiveCustomer, customers, products, addToHistory, pushTransaction, addToCustomerDue, receivePayment, isDarkMode, fontSizeScale } = useStore();
+  const { user, activeCustomer, setActiveCustomer, customers, products, addProduct, addToHistory, pushTransaction, addToCustomerDue, receivePayment, isDarkMode, fontSizeScale } = useStore();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const [deposit, setDeposit] = useState('');
@@ -72,13 +72,23 @@ export default function JournalCheckoutScreen() {
     if (!activeCustomer || !canSave) return;
     const now = new Date().toISOString();
     if (total > 0) {
-      const items = computed
-        .filter(r => r.amount > 0)
+      const validRows = computed.filter(r => r.amount > 0);
+      const items = validRows
         .map(r => ({
           name: r.exact ? r.exact.name : r.query.trim() || '?',
           quantity: r.qty,
           price: r.rate,
         }));
+      const seen = new Set(products.map(p => (p.name || '').trim().toLowerCase()));
+      validRows.forEach(r => {
+        if (r.exact) return;
+        const name = r.query.trim();
+        if (!name) return;
+        const key = name.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        addProduct({ name, price: r.rate, stock: 0, image: null });
+      });
       const order = {
         id: uid(),
         customerId: activeCustomer.id,
@@ -166,16 +176,16 @@ export default function JournalCheckoutScreen() {
         </Inspect>
 
         <View className={`mx-4 mt-3 rounded-2xl border overflow-hidden ${card}`}>
-          <View className={`flex-row py-2.5 border-b ${isDarkMode ? 'border-slate-800 bg-black/40' : 'border-slate-100 bg-slate-50'}`}>
-            <Text className={`font-bold text-center ${muted}`} style={{ width: 30, fontSize: 11 * fontSizeScale }}>SN</Text>
+          <View className={`flex-row py-3 border-b ${isDarkMode ? 'border-slate-800 bg-black/40' : 'border-slate-100 bg-slate-50'}`}>
+            <Text className={`font-bold text-center ${muted}`} style={{ width: 36, fontSize: 13 * fontSizeScale }}>SN</Text>
             <View style={{ width: 1 }} className={`${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`} />
-            <Text className={`font-bold flex-1 pl-2 ${muted}`} style={{ fontSize: 11 * fontSizeScale }}>Name</Text>
+            <Text className={`font-bold flex-1 pl-2 ${muted}`} style={{ fontSize: 13 * fontSizeScale }}>Name</Text>
             <View style={{ width: 1 }} className={`${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`} />
-            <Text className={`font-bold text-center ${muted}`} style={{ width: 62, fontSize: 11 * fontSizeScale }}>Rate</Text>
+            <Text className={`font-bold text-center ${muted}`} style={{ width: 72, fontSize: 13 * fontSizeScale }}>Rate</Text>
             <View style={{ width: 1 }} className={`${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`} />
-            <Text className={`font-bold text-center ${muted}`} style={{ width: 46, fontSize: 11 * fontSizeScale }}>Qty</Text>
+            <Text className={`font-bold text-center ${muted}`} style={{ width: 54, fontSize: 13 * fontSizeScale }}>Qty</Text>
             <View style={{ width: 1 }} className={`${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`} />
-            <Text className={`font-bold text-center ${muted}`} style={{ width: 68, fontSize: 11 * fontSizeScale }}>Amount</Text>
+            <Text className={`font-bold text-center ${muted}`} style={{ width: 78, fontSize: 13 * fontSizeScale }}>Amount</Text>
             <View style={{ width: 30 }} />
           </View>
 
@@ -187,14 +197,14 @@ export default function JournalCheckoutScreen() {
             return (
               <View key={r.key} className={`border-b ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
                 <Inspect id="journal-row">
-                  <View className="flex-row py-1 items-center">
-                    <Text className={`text-center ${muted}`} style={{ width: 30, fontSize: 14 * fontSizeScale }}>{idx + 1}</Text>
+                  <View className="flex-row py-2 items-center">
+                    <Text className={`text-center ${muted}`} style={{ width: 36, fontSize: 17 * fontSizeScale }}>{idx + 1}</Text>
                     <View style={{ width: 1, alignSelf: 'stretch' }} className={`${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`} />
                     {r.productId ? (
-                      <View className="flex-1 pl-2 mr-1 py-1">
+                      <View className="flex-1 pl-2 mr-1 py-1.5">
                         <Text
                           className={cellText}
-                          style={{ fontSize: 14 * fontSizeScale }}
+                          style={{ fontSize: 18 * fontSizeScale }}
                           numberOfLines={1}
                         >
                           {r.query}
@@ -204,7 +214,7 @@ export default function JournalCheckoutScreen() {
                       <View className="flex-1 pl-2 mr-1">
                         <TextInput
                           className={cellText}
-                          style={{ fontSize: 14 * fontSizeScale, outlineStyle: 'none' }}
+                          style={{ fontSize: 18 * fontSizeScale, outlineStyle: 'none' }}
                           placeholder="Type item name"
                           placeholderTextColor={isDarkMode ? '#475569' : '#94a3b8'}
                           value={r.query}
@@ -217,13 +227,13 @@ export default function JournalCheckoutScreen() {
                     )}
                     <View style={{ width: 1, alignSelf: 'stretch' }} className={`${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`} />
                     {noMatch && isDefaultRate ? (
-                      <View style={{ width: 62 }} className="items-center justify-center">
-                        <Text className={muted} style={{ fontSize: 16 * fontSizeScale, opacity: 0.5 }}>?</Text>
+                      <View style={{ width: 72 }} className="items-center justify-center">
+                        <Text className={muted} style={{ fontSize: 20 * fontSizeScale, opacity: 0.5 }}>?</Text>
                       </View>
                     ) : (
                       <TextInput
                         className={`${cellText} text-center`}
-                        style={{ width: 62, fontSize: 14 * fontSizeScale, outlineStyle: 'none', opacity: isDefaultRate ? 0.3 : 1 }}
+                        style={{ width: 72, fontSize: 18 * fontSizeScale, outlineStyle: 'none', opacity: isDefaultRate ? 0.3 : 1 }}
                         placeholder="0"
                         placeholderTextColor={isDarkMode ? '#475569' : '#94a3b8'}
                         keyboardType="numeric"
@@ -235,7 +245,7 @@ export default function JournalCheckoutScreen() {
                     <View style={{ width: 1, alignSelf: 'stretch' }} className={`${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`} />
                     <TextInput
                       className={`${cellText} text-center`}
-                      style={{ width: 46, fontSize: 14 * fontSizeScale, outlineStyle: 'none', opacity: isDefaultQty ? 0.3 : 1 }}
+                      style={{ width: 54, fontSize: 18 * fontSizeScale, outlineStyle: 'none', opacity: isDefaultQty ? 0.3 : 1 }}
                       placeholder="1"
                       placeholderTextColor={isDarkMode ? '#475569' : '#94a3b8'}
                       keyboardType="numeric"
@@ -244,7 +254,7 @@ export default function JournalCheckoutScreen() {
                       onFocus={() => setFocusKey(null)}
                     />
                     <View style={{ width: 1, alignSelf: 'stretch' }} className={`${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`} />
-                    <Text className={`text-center font-semibold ${cellText}`} style={{ width: 68, fontSize: 13 * fontSizeScale }}>
+                    <Text className={`text-center font-semibold ${cellText}`} style={{ width: 78, fontSize: 16 * fontSizeScale }}>
                       {r.amount > 0 ? (Number.isInteger(r.amount) ? String(r.amount) : String(parseFloat(r.amount.toFixed(2)))) : ''}
                     </Text>
                     <TouchableOpacity
@@ -266,9 +276,9 @@ export default function JournalCheckoutScreen() {
                           isDarkMode ? 'bg-black hover:bg-slate-800' : 'bg-white hover:bg-blue-50'
                         } ${si < sugg.length - 1 ? (isDarkMode ? 'border-b border-slate-800' : 'border-b border-slate-100') : ''}`}
                       >
-                        <Text className={`flex-1 px-3 py-2.5 ${cellText}`} style={{ fontSize: 14 * fontSizeScale }} numberOfLines={1}>{p.name}</Text>
+                        <Text className={`flex-1 px-3 py-3 ${cellText}`} style={{ fontSize: 17 * fontSizeScale }} numberOfLines={1}>{p.name}</Text>
                         <View style={{ width: 1 }} className={`${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`} />
-                        <Text className="text-blue-500 font-bold px-3 py-2.5 text-right" style={{ width: 96, fontSize: 13 * fontSizeScale }}>Rs. {Number(p.price).toFixed(2)}</Text>
+                        <Text className="text-blue-500 font-bold px-3 py-3 text-right" style={{ width: 104, fontSize: 15 * fontSizeScale }}>Rs. {Number(p.price).toFixed(2)}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -281,14 +291,10 @@ export default function JournalCheckoutScreen() {
             onPress={() => setRows(prev => [...prev, freshRow()])}
             className="flex-row items-center justify-center gap-1 py-3"
           >
-            <Plus size={16} color="#3b82f6" />
-            <Text className="text-blue-500 font-bold" style={{ fontSize: 14 * fontSizeScale }}>Add line</Text>
+            <Plus size={18} color="#3b82f6" />
+            <Text className="text-blue-500 font-bold" style={{ fontSize: 16 * fontSizeScale }}>Add line</Text>
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity onPress={() => navigation.navigate('Checkout')} className="mx-4 mt-3 self-start">
-          <Text className="text-blue-500 font-semibold" style={{ fontSize: 13 * fontSizeScale }}>Prefer photos? Open thumbnail checkout →</Text>
-        </TouchableOpacity>
       </ScrollView>
 
       <View className={`absolute bottom-0 left-0 right-0 border-t px-6 pt-4 ${isDarkMode ? 'bg-black border-slate-900' : 'bg-white border-slate-200'}`} style={{ paddingBottom: insets.bottom + 16 }}>
