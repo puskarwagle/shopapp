@@ -1,10 +1,24 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, Plus, X } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import useStore, { uid } from '../store/useStore';
 import Inspect from '../components/Inspect';
+
+function CustomerAvatar({ uri, name }) {
+  const [err, setErr] = useState(false);
+  if (!uri || err) {
+    return (
+      <View className="w-11 h-11 rounded-full items-center justify-center bg-slate-200">
+        <Text className="font-bold text-slate-500" style={{ fontSize: 18 }}>
+          {(name || 'P').charAt(0).toUpperCase()}
+        </Text>
+      </View>
+    );
+  }
+  return <Image source={{ uri }} className="w-11 h-11 rounded-full" onError={() => setErr(true)} />;
+}
 
 const freshRow = () => ({ key: uid(), productId: null, query: '', rate: '', qty: '1' });
 
@@ -115,12 +129,15 @@ export default function JournalCheckoutScreen() {
         <Inspect id="journal-customer-card">
           <TouchableOpacity
             onPress={() => navigation.navigate('CustomerProfile', { customerId: activeCustomer.id, customerName: activeCustomer.name })}
-            className="flex-1 items-end"
+            className="flex-1 flex-row items-center justify-end gap-3"
           >
-            <Text className={`font-bold ${cellText}`} style={{ fontSize: 16 * fontSizeScale }} numberOfLines={1}>{activeCustomer.name}</Text>
-            <Text className={oldDue > 0 ? 'text-red-500 font-semibold' : muted} style={{ fontSize: 12 * fontSizeScale }}>
-              Old due: Rs. {oldDue.toFixed(2)}
-            </Text>
+            <View className="flex-1 items-end">
+              <Text className={`font-bold ${cellText}`} style={{ fontSize: 16 * fontSizeScale }} numberOfLines={1}>{activeCustomer.name}</Text>
+              <Text className={oldDue > 0 ? 'text-red-500 font-semibold' : muted} style={{ fontSize: 12 * fontSizeScale }}>
+                Old due: Rs. {oldDue.toFixed(2)}
+              </Text>
+            </View>
+            <CustomerAvatar uri={customer?.image || activeCustomer?.image} name={activeCustomer?.name} />
           </TouchableOpacity>
         </Inspect>
       </View>
@@ -173,19 +190,31 @@ export default function JournalCheckoutScreen() {
                   <View className="flex-row py-1 items-center">
                     <Text className={`text-center ${muted}`} style={{ width: 30, fontSize: 14 * fontSizeScale }}>{idx + 1}</Text>
                     <View style={{ width: 1, alignSelf: 'stretch' }} className={`${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`} />
-                    <View className="flex-1 pl-2 mr-1">
-                      <TextInput
-                        className={cellText}
-                        style={{ fontSize: 14 * fontSizeScale, outlineStyle: 'none' }}
-                        placeholder="Type item name"
-                        placeholderTextColor={isDarkMode ? '#475569' : '#94a3b8'}
-                        value={r.query}
-                        onChangeText={(t) => patchRow(r.key, { query: t, productId: null })}
-                        onFocus={() => setFocusKey(r.key)}
-                        onBlur={() => setFocusKey(null)}
-                        returnKeyType="next"
-                      />
-                    </View>
+                    {r.productId ? (
+                      <View className="flex-1 pl-2 mr-1 py-1">
+                        <Text
+                          className={cellText}
+                          style={{ fontSize: 14 * fontSizeScale }}
+                          numberOfLines={1}
+                        >
+                          {r.query}
+                        </Text>
+                      </View>
+                    ) : (
+                      <View className="flex-1 pl-2 mr-1">
+                        <TextInput
+                          className={cellText}
+                          style={{ fontSize: 14 * fontSizeScale, outlineStyle: 'none' }}
+                          placeholder="Type item name"
+                          placeholderTextColor={isDarkMode ? '#475569' : '#94a3b8'}
+                          value={r.query}
+                          onChangeText={(t) => patchRow(r.key, { query: t, productId: null })}
+                          onFocus={() => setFocusKey(r.key)}
+                          onBlur={() => setTimeout(() => setFocusKey(null), 150)}
+                          returnKeyType="next"
+                        />
+                      </View>
+                    )}
                     <View style={{ width: 1, alignSelf: 'stretch' }} className={`${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`} />
                     {noMatch && isDefaultRate ? (
                       <View style={{ width: 62 }} className="items-center justify-center">
@@ -216,7 +245,7 @@ export default function JournalCheckoutScreen() {
                     />
                     <View style={{ width: 1, alignSelf: 'stretch' }} className={`${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`} />
                     <Text className={`text-center font-semibold ${cellText}`} style={{ width: 68, fontSize: 13 * fontSizeScale }}>
-                      {r.amount > 0 ? r.amount.toFixed(2) : ''}
+                      {r.amount > 0 ? (Number.isInteger(r.amount) ? String(r.amount) : String(parseFloat(r.amount.toFixed(2)))) : ''}
                     </Text>
                     <TouchableOpacity
                       onPress={() => setRows(prev => (prev.length > 1 ? prev.filter(x => x.key !== r.key) : [freshRow()]))}
@@ -229,14 +258,17 @@ export default function JournalCheckoutScreen() {
                 </Inspect>
                 {sugg.length > 0 && (
                   <View className={`ml-2 mr-1 mb-2 rounded-xl overflow-hidden border ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
-                    {sugg.map(p => (
+                    {sugg.map((p, si) => (
                       <TouchableOpacity
                         key={p.id}
                         onPress={() => pickProduct(r.key, p)}
-                        className={`flex-row justify-between px-3 py-2 ${isDarkMode ? 'bg-black' : 'bg-slate-50'}`}
+                        className={`flex-row items-stretch ${
+                          isDarkMode ? 'bg-black hover:bg-slate-800' : 'bg-white hover:bg-blue-50'
+                        } ${si < sugg.length - 1 ? (isDarkMode ? 'border-b border-slate-800' : 'border-b border-slate-100') : ''}`}
                       >
-                        <Text className={cellText} style={{ fontSize: 14 * fontSizeScale }} numberOfLines={1}>{p.name}</Text>
-                        <Text className="text-blue-500 font-bold" style={{ fontSize: 13 * fontSizeScale }}>Rs. {Number(p.price).toFixed(2)}</Text>
+                        <Text className={`flex-1 px-3 py-2.5 ${cellText}`} style={{ fontSize: 14 * fontSizeScale }} numberOfLines={1}>{p.name}</Text>
+                        <View style={{ width: 1 }} className={`${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`} />
+                        <Text className="text-blue-500 font-bold px-3 py-2.5 text-right" style={{ width: 96, fontSize: 13 * fontSizeScale }}>Rs. {Number(p.price).toFixed(2)}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -260,23 +292,24 @@ export default function JournalCheckoutScreen() {
       </ScrollView>
 
       <View className={`absolute bottom-0 left-0 right-0 border-t px-6 pt-4 ${isDarkMode ? 'bg-black border-slate-900' : 'bg-white border-slate-200'}`} style={{ paddingBottom: insets.bottom + 16 }}>
-        <View className="flex-row justify-between mb-1">
+        <View className="flex-row justify-between items-center mb-2">
           <Text className={muted} style={{ fontSize: 14 * fontSizeScale }}>Total</Text>
-          <Text className={`font-bold ${cellText}`} style={{ fontSize: 16 * fontSizeScale }}>Rs. {total.toFixed(2)}</Text>
+          <Text className={`font-bold text-right ${cellText}`} style={{ fontSize: 16 * fontSizeScale }}>Rs. {total.toFixed(2)}</Text>
         </View>
-        <View className="flex-row justify-between mb-1">
+        <View className="flex-row justify-between items-center mb-2">
           <Text className={muted} style={{ fontSize: 14 * fontSizeScale }}>Deposit</Text>
-          <Text className="font-bold text-green-600" style={{ fontSize: 16 * fontSizeScale }}>Rs. {depositVal.toFixed(2)}</Text>
+          <Text className="font-bold text-right text-green-600" style={{ fontSize: 16 * fontSizeScale }}>Rs. {depositVal.toFixed(2)}</Text>
         </View>
-        <View className="flex-row justify-between mb-4">
-          <Text className={`font-bold ${cellText}`} style={{ fontSize: 16 * fontSizeScale }}>New due (old + total − deposit)</Text>
-          <Text className={`font-bold ${newDue > 0 ? 'text-red-500' : 'text-green-600'}`} style={{ fontSize: 18 * fontSizeScale }}>Rs. {newDue.toFixed(2)}</Text>
+        <View className="flex-row justify-between items-center mb-3">
+          <Text className={`font-bold ${cellText}`} style={{ fontSize: 14 * fontSizeScale }}>New due</Text>
+          <Text className={`font-bold text-right ${newDue > 0 ? 'text-red-500' : 'text-green-600'}`} style={{ fontSize: 16 * fontSizeScale }}>Rs. {newDue.toFixed(2)}</Text>
         </View>
         <Inspect id="journal-save-btn">
           <TouchableOpacity
             onPress={handleSave}
             disabled={!canSave}
             className={`p-5 rounded-2xl items-center shadow-lg ${canSave ? 'bg-blue-600' : 'bg-slate-300'}`}
+            style={{ marginBottom: 8 }}
           >
             <Text className="text-white font-bold text-xl" style={{ fontSize: 20 * fontSizeScale }}>Save Journal</Text>
           </TouchableOpacity>
