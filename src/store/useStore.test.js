@@ -15,6 +15,7 @@ vi.mock('../lib/supabase', () => ({
 
 const useStore = (await import('../store/useStore')).default;
 import { SEED_PRODUCTS } from '../lib/seedInventory';
+import { SEED_CUSTOMERS } from '../lib/seedCustomers';
 
 const reset = () =>
   useStore.setState({
@@ -346,6 +347,57 @@ describe('seed sample inventory', () => {
   });
 });
 
+describe('seed sample customers', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    reset();
+  });
+  afterEach(() => {
+    vi.runOnlyPendingTimers();
+    vi.useRealTimers();
+  });
+
+  it('adds Nepali seed customers, tagged with shop_id', () => {
+    const res = useStore.getState().seedSampleCustomers();
+    expect(res.ok).toBe(true);
+    expect(res.added).toBe(SEED_CUSTOMERS.length);
+    const customers = useStore.getState().customers;
+    expect(customers).toHaveLength(SEED_CUSTOMERS.length);
+    expect(customers.every(c => c.shop_id === 'test-shop')).toBe(true);
+    expect(customers.every(c => c.id && c.name && c.image)).toBe(true);
+  });
+
+  it('skips names already added on re-run', () => {
+    useStore.getState().seedSampleCustomers();
+    const res = useStore.getState().seedSampleCustomers();
+    expect(res.ok).toBe(true);
+    expect(res.added).toBe(0);
+    expect(res.skipped).toBe(SEED_CUSTOMERS.length);
+    expect(useStore.getState().customers).toHaveLength(SEED_CUSTOMERS.length);
+  });
+
+  it('refuses to seed without a shop', () => {
+    useStore.setState({ shopId: null });
+    const res = useStore.getState().seedSampleCustomers();
+    expect(res.ok).toBe(false);
+    expect(useStore.getState().customers).toEqual([]);
+  });
+});
+
+describe('customer view', () => {
+  beforeEach(() => {
+    reset();
+  });
+
+  it('defaults to list and only accepts list/grid', () => {
+    expect(useStore.getState().customerView).toBe('list');
+    useStore.getState().setCustomerView('grid');
+    expect(useStore.getState().customerView).toBe('grid');
+    useStore.getState().setCustomerView('bogus');
+    expect(useStore.getState().customerView).toBe('list');
+  });
+});
+
 describe('persistence partialize', () => {  it('only persists the whitelisted keys', () => {
     const partialize = useStore.persist.getOptions().partialize;
     const full = useStore.getState();
@@ -353,6 +405,7 @@ describe('persistence partialize', () => {  it('only persists the whitelisted ke
     const allowed = [
       'user', 'shopId', 'shopName', 'shopInviteCode', 'inviteExpiresAt',
       'activeCustomer', 'isDarkMode', 'fontSizeScale', 'thumbnailScale',
+      'customerView',
       'cart', 'history', 'products', 'customers', 'productCatalog',
       'catalogCategories', 'catalogVersion', 'syncQueue', 'lastSyncedAt',
     ];

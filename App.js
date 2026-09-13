@@ -11,6 +11,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import InventoryScreen from './src/screens/InventoryScreen';
 import CustomersScreen from './src/screens/CustomersScreen';
 import CheckoutScreen from './src/screens/CheckoutScreen';
+import JournalCheckoutScreen from './src/screens/JournalCheckoutScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import CustomerProfileScreen from './src/screens/CustomerProfileScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
@@ -30,6 +31,7 @@ const InspectableInventory = withInspect(InventoryScreen);
 const InspectableHistory = withInspect(HistoryScreen);
 const InspectableSettings = withInspect(SettingsScreen);
 const InspectableCheckout = withInspect(CheckoutScreen);
+const InspectableJournalCheckout = withInspect(JournalCheckoutScreen);
 const InspectableCustomerProfile = withInspect(CustomerProfileScreen);
 
 function MainTabs() {
@@ -152,6 +154,7 @@ export default function App() {
               <>
                 <Stack.Screen name="Main" component={MainTabs} />
                 <Stack.Screen name="Checkout" component={InspectableCheckout} options={{ animation: 'slide_from_bottom' }} />
+                <Stack.Screen name="JournalCheckout" component={InspectableJournalCheckout} options={{ animation: 'slide_from_bottom' }} />
                 <Stack.Screen name="CustomerProfile" component={InspectableCustomerProfile} options={{ animation: 'slide_from_bottom' }} />
               </>
             )}

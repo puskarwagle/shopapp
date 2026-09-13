@@ -1,34 +1,31 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, Image, Modal, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Search, UserPlus, Camera, Image as ImageIcon, X } from 'lucide-react-native';
+import { Search, UserPlus, Camera, Image as ImageIcon, X, LayoutList, LayoutGrid } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import useStore from '../store/useStore';
 import { useNavigation } from '@react-navigation/native';
 import Inspect from '../components/Inspect';
 
-const WALK_IN = { id: 'other', name: 'Other / Walk-in', image: 'https://via.placeholder.com/150/f1f5f9/64748b?text=Other' };
-
 export default function CustomersScreen() {
   const [search, setSearch] = useState('');
-  const [showArchived, setShowArchived] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDue, setNewDue] = useState('');
   const [newImage, setNewImage] = useState(null);
-  const { customers, addCustomer, setActiveCustomer, isDarkMode, fontSizeScale, thumbnailScale } = useStore();
+  const [seedMsg, setSeedMsg] = useState('');
+  const { customers, addCustomer, seedSampleCustomers, setActiveCustomer, customerView, setCustomerView, isDarkMode, fontSizeScale, thumbnailScale } = useStore();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const isGrid = customerView === 'grid';
 
   const activeCustomers = customers.filter(c => !c.is_deleted);
-  const archivedCustomers = customers.filter(c => c.is_deleted);
-  const visibleCustomers = showArchived ? archivedCustomers : activeCustomers;
 
-  const filteredCustomers = visibleCustomers.filter(c =>
+  const filteredCustomers = activeCustomers.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const displayList = !showArchived && search.trim() === '' ? [WALK_IN, ...filteredCustomers] : filteredCustomers;
+  const displayList = filteredCustomers;
 
   const handleSelectCustomer = (customer) => {
     if (customer.is_deleted) {
@@ -36,7 +33,12 @@ export default function CustomersScreen() {
       return;
     }
     setActiveCustomer(customer);
-    navigation.navigate('Checkout');
+    navigation.navigate('JournalCheckout');
+  };
+
+  const handleSeed = () => {
+    const res = seedSampleCustomers();
+    setSeedMsg(res.ok ? `Added ${res.added} customers.` : (res.error || 'Could not seed.'));
   };
 
   const pickImage = async (useCamera = false) => {
@@ -66,7 +68,38 @@ export default function CustomersScreen() {
     setShowAddModal(false);
   };
 
-  const renderItem = ({ item }) => (
+  const renderRow = ({ item }) => (
+    <Inspect id="customer-row">
+      <TouchableOpacity
+        className={`flex-row items-center px-4 py-3 mb-2 rounded-2xl shadow-sm border ${
+          isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'
+        }`}
+        onPress={() => handleSelectCustomer(item)}
+      >
+        <View className="flex-1 mr-3">
+          <Text
+            className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-800'}`}
+            style={{ fontSize: 15 * fontSizeScale }}
+            numberOfLines={1}
+          >
+            {item.name}
+          </Text>
+          {item.due > 0 ? (
+            <Text className="text-red-500 font-bold" style={{ fontSize: 12 * fontSizeScale }}>
+              Due: Rs. {item.due}
+            </Text>
+          ) : (
+            <Text className={isDarkMode ? 'text-slate-500' : 'text-slate-400'} style={{ fontSize: 12 * fontSizeScale }}>
+              No due
+            </Text>
+          )}
+        </View>
+        <Image source={{ uri: item.image }} className="w-12 h-12 rounded-full" />
+      </TouchableOpacity>
+    </Inspect>
+  );
+
+  const renderGrid = ({ item }) => (
     <Inspect id="customer-card">
       <TouchableOpacity
         className={`flex-1 m-2 rounded-2xl shadow-sm border overflow-hidden ${
@@ -95,14 +128,6 @@ export default function CustomersScreen() {
               Rs. {item.due}
             </Text>
           )}
-          {item.is_deleted && (
-            <Text
-              className={isDarkMode ? 'text-slate-500 font-bold' : 'text-slate-400 font-bold'}
-              style={{ fontSize: 12 * fontSizeScale }}
-            >
-              Archived
-            </Text>
-          )}
         </View>
       </TouchableOpacity>
     </Inspect>
@@ -110,42 +135,59 @@ export default function CustomersScreen() {
 
   return (
     <View className={`flex-1 p-4 ${isDarkMode ? 'bg-black' : 'bg-slate-50'}`}>
-      <Inspect id="search-bar">
-        <View className={`flex-row items-center border rounded-2xl px-4 py-2 mb-4 ${
-          isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
-        }`}>
-          <Search size={20} color={isDarkMode ? '#94a3b8' : '#64748b'} />
-          <TextInput
-            className={`flex-1 ml-3 text-base ${isDarkMode ? 'text-white' : 'text-slate-800'}`}
-            style={{ outlineStyle: 'none' }}
-            placeholder="Filter by name..."
-            placeholderTextColor={isDarkMode ? '#475569' : '#94a3b8'}
-            value={search}
-            onChangeText={setSearch}
-          />
-        </View>
-      </Inspect>
-
-      {archivedCustomers.length > 0 && (
+      <View className="flex-row items-center gap-2 mb-4">
+        <Inspect id="search-bar">
+          <View className={`flex-1 flex-row items-center border rounded-2xl px-4 py-2 ${
+            isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+          }`}>
+            <Search size={20} color={isDarkMode ? '#94a3b8' : '#64748b'} />
+            <TextInput
+              className={`flex-1 ml-3 text-base ${isDarkMode ? 'text-white' : 'text-slate-800'}`}
+              style={{ outlineStyle: 'none' }}
+              placeholder="Filter by name..."
+              placeholderTextColor={isDarkMode ? '#475569' : '#94a3b8'}
+              value={search}
+              onChangeText={setSearch}
+            />
+          </View>
+        </Inspect>
         <TouchableOpacity
-          onPress={() => setShowArchived(!showArchived)}
-          className={`mb-3 px-4 py-2.5 rounded-xl border self-start ${
+          onPress={() => setCustomerView(isGrid ? 'list' : 'grid')}
+          className={`w-11 h-11 items-center justify-center rounded-2xl border ${
             isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
           }`}
         >
-          <Text className={isDarkMode ? 'text-slate-400 font-semibold' : 'text-slate-600 font-semibold'} style={{ fontSize: 13 * fontSizeScale }}>
-            {showArchived ? '← Back to customers' : `Archived (${archivedCustomers.length})`}
-          </Text>
+          {isGrid
+            ? <LayoutGrid size={20} color={isDarkMode ? '#94a3b8' : '#64748b'} />
+            : <LayoutList size={20} color={isDarkMode ? '#94a3b8' : '#64748b'} />}
         </TouchableOpacity>
-      )}
+      </View>
 
       <FlatList
+        key={customerView}
         data={displayList}
-        renderItem={renderItem}
+        renderItem={isGrid ? renderGrid : renderRow}
         keyExtractor={item => item.id}
-        numColumns={2}
+        numColumns={isGrid ? 2 : 1}
         contentContainerStyle={{ paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <View className="items-center pt-16 px-8">
+            <Text className={`font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-slate-800'}`} style={{ fontSize: 16 * fontSizeScale }}>
+              No customers yet
+            </Text>
+            {search.trim() === '' && (
+              <>
+                <TouchableOpacity onPress={handleSeed} className="bg-blue-600 px-6 py-3 rounded-xl mt-2">
+                  <Text className="text-white font-bold" style={{ fontSize: 15 * fontSizeScale }}>Add sample customers</Text>
+                </TouchableOpacity>
+                {!!seedMsg && (
+                  <Text className={`mt-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`} style={{ fontSize: 13 * fontSizeScale }}>{seedMsg}</Text>
+                )}
+              </>
+            )}
+          </View>
+        }
       />
 
       <Inspect id="add-customer-btn">
@@ -218,7 +260,7 @@ export default function CustomersScreen() {
                   isDarkMode ? 'bg-black border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
                 }`}
                 style={{ outlineStyle: 'none' }}
-                placeholder="e.g. Mike Smith"
+                placeholder="e.g. Ram Bahadur"
                 placeholderTextColor={isDarkMode ? '#475569' : '#94a3b8'}
                 value={newName}
                 onChangeText={setNewName}

@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { SEED_PRODUCTS } from '../lib/seedInventory';
+import { SEED_CUSTOMERS } from '../lib/seedCustomers';
 
 export const uid = () =>
   Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -44,6 +45,8 @@ const useStore = create(
       setFontSizeScale: (scale) => set({ fontSizeScale: scale }),
       thumbnailScale: 1,
       setThumbnailScale: (scale) => set({ thumbnailScale: scale }),
+      customerView: 'list',
+      setCustomerView: (view) => set({ customerView: view === 'grid' ? 'grid' : 'list' }),
 
       activeCustomer: null,
       setActiveCustomer: (customer) => set({ activeCustomer: customer }),
@@ -225,6 +228,15 @@ const useStore = create(
         }));
         return { ok: true, added: fresh.length, skipped: SEED_PRODUCTS.length - fresh.length };
       },
+      seedSampleCustomers: () => {
+        if (!get().shopId) return { ok: false, error: 'No shop.' };
+        const existing = new Set(get().customers.map(c => (c.name || '').trim().toLowerCase()));
+        const fresh = SEED_CUSTOMERS.filter(c => !existing.has(c.name.trim().toLowerCase()));
+        fresh.forEach(c => get().addCustomer({
+          name: c.name, due: c.due, image: c.image,
+        }));
+        return { ok: true, added: fresh.length, skipped: SEED_CUSTOMERS.length - fresh.length };
+      },
       addCustomer: (customer) => {
         if (!get().shopId) return;
         const row = { ...customer, id: customer.id || uid(), shop_id: get().shopId, is_deleted: false };
@@ -398,6 +410,7 @@ const useStore = create(
         isDarkMode: state.isDarkMode,
         fontSizeScale: state.fontSizeScale,
         thumbnailScale: state.thumbnailScale,
+        customerView: state.customerView,
         cart: state.cart,
         history: state.history,
         products: state.products,

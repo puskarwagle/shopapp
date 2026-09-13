@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, Switch, Pressable, ScrollView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, Switch, Pressable, ScrollView, Platform, ActivityIndicator, Modal } from 'react-native';
 import Slider from '@react-native-community/slider';
-import { Moon, Sun, Type, Image as ImageIcon, Store, Copy, RotateCw, LogOut } from 'lucide-react-native';
+import { Moon, Sun, Type, Image as ImageIcon, LayoutList, Store, Copy, RotateCw, LogOut, Archive, X, ChevronRight } from 'lucide-react-native';
+import { FlatList, TouchableOpacity, Image } from 'react-native';
 import useStore from '../store/useStore';
 import Inspect from '../components/Inspect';
 
@@ -13,11 +14,14 @@ if (Platform.OS !== 'web') {
 const SettingsScreen = () => {
   const [remaining, setRemaining] = useState(0);
   const [generating, setGenerating] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const timerRef = useRef(null);
   const {
     isDarkMode, toggleDarkMode,
     fontSizeScale, setFontSizeScale,
     thumbnailScale, setThumbnailScale,
+    customerView, setCustomerView,
+    customers, restoreCustomer,
     logout,
     user,
     shopName,
@@ -115,6 +119,48 @@ const SettingsScreen = () => {
         </View>
       </Inspect>
 
+      <Inspect id="settings-customer-view">
+        <View className="flex-row justify-between items-center mb-6">
+          <View className="flex-row items-center gap-3">
+            <LayoutList size={20} color={isDarkMode ? 'white' : '#0f172a'} />
+            <Text className={`text-base font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Customers Layout</Text>
+          </View>
+          <View className={`flex-row rounded-xl p-1 ${isDarkMode ? 'bg-slate-900' : 'bg-slate-100'}`}>
+            {['list', 'grid'].map(v => (
+              <Pressable
+                key={v}
+                onPress={() => setCustomerView(v)}
+                className={`px-4 py-2 rounded-lg ${customerView === v ? 'bg-blue-600' : ''}`}
+              >
+                <Text className={`font-bold capitalize ${customerView === v ? 'text-white' : (isDarkMode ? 'text-slate-400' : 'text-slate-500')}`}>
+                  {v}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      </Inspect>
+
+      <Inspect id="settings-archived-customers">
+        <TouchableOpacity
+          onPress={() => setShowArchived(true)}
+          className={`flex-row justify-between items-center mb-6 px-4 py-3 rounded-2xl border ${
+            isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-100'
+          }`}
+        >
+          <View className="flex-row items-center gap-3">
+            <Archive size={20} color={isDarkMode ? 'white' : '#0f172a'} />
+            <Text className={`text-base font-medium ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Archived Customers</Text>
+          </View>
+          <View className="flex-row items-center gap-2">
+            <Text className={isDarkMode ? 'text-slate-500' : 'text-slate-400'}>
+              {customers.filter(c => c.is_deleted).length}
+            </Text>
+            <ChevronRight size={18} color={isDarkMode ? '#64748b' : '#94a3b8'} />
+          </View>
+        </TouchableOpacity>
+      </Inspect>
+
       <Inspect id="settings-invite-panel">
         <View className={`p-4 rounded-2xl border mb-4 ${isDarkMode ? 'bg-slate-900/50 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
           <View className="flex-row items-center gap-2 mb-3">
@@ -199,6 +245,44 @@ const SettingsScreen = () => {
           <Text className="font-bold text-red-500">Log Out</Text>
         </Pressable>
       </Inspect>
+
+      <Modal visible={showArchived} animationType="slide" transparent>
+        <View className="flex-1 bg-black/80 justify-end">
+          <View className={`rounded-t-3xl flex-1 ${isDarkMode ? 'bg-slate-900' : 'bg-white'}`} style={{ paddingBottom: 20 }}>
+            <View className={`flex-row justify-between items-center px-6 pt-6 pb-4 border-b ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
+              <Text className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Archived Customers</Text>
+              <TouchableOpacity onPress={() => setShowArchived(false)}>
+                <X size={24} color={isDarkMode ? '#94a3b8' : '#64748b'} />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={customers.filter(c => c.is_deleted)}
+              keyExtractor={item => item.id}
+              contentContainerStyle={{ padding: 16 }}
+              ListEmptyComponent={
+                <View className="items-center pt-12">
+                  <Text className={isDarkMode ? 'text-slate-500' : 'text-slate-400'}>No archived customers</Text>
+                </View>
+              }
+              renderItem={({ item }) => (
+                <View className={`flex-row items-center px-4 py-3 mb-2 rounded-2xl border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-100'}`}>
+                  <Image source={{ uri: item.image }} className="w-10 h-10 rounded-full mr-3" />
+                  <View className="flex-1">
+                    <Text className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-800'}`} numberOfLines={1}>{item.name}</Text>
+                    {item.due > 0 && <Text className="text-red-500 text-xs font-bold">Rs. {item.due}</Text>}
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => { restoreCustomer(item.id); }}
+                    className="bg-blue-600 px-4 py-2 rounded-xl"
+                  >
+                    <Text className="text-white font-bold text-sm">Restore</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
