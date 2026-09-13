@@ -48,6 +48,8 @@ const useStore = create(
       setThumbnailScale: (scale) => set({ thumbnailScale: scale }),
       customerView: 'list',
       setCustomerView: (view) => set({ customerView: view === 'grid' ? 'grid' : 'list' }),
+      inventoryView: 'grid',
+      setInventoryView: (view) => set({ inventoryView: view === 'list' ? 'list' : 'grid' }),
 
       activeCustomer: null,
       setActiveCustomer: (customer) => set({ activeCustomer: customer }),
@@ -452,6 +454,7 @@ const useStore = create(
         fontSizeScale: state.fontSizeScale,
         thumbnailScale: state.thumbnailScale,
         customerView: state.customerView,
+        inventoryView: state.inventoryView,
         cart: state.cart,
         history: state.history,
         products: state.products,

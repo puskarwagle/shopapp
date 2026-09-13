@@ -398,6 +398,20 @@ describe('customer view', () => {
   });
 });
 
+describe('inventory view', () => {
+  beforeEach(() => {
+    reset();
+  });
+
+  it('defaults to grid and only accepts grid/list', () => {
+    expect(useStore.getState().inventoryView).toBe('grid');
+    useStore.getState().setInventoryView('list');
+    expect(useStore.getState().inventoryView).toBe('list');
+    useStore.getState().setInventoryView('bogus');
+    expect(useStore.getState().inventoryView).toBe('grid');
+  });
+});
+
 describe('persistence partialize', () => {  it('only persists the whitelisted keys', () => {
     const partialize = useStore.persist.getOptions().partialize;
     const full = useStore.getState();
@@ -405,7 +419,7 @@ describe('persistence partialize', () => {  it('only persists the whitelisted ke
     const allowed = [
       'user', 'shopId', 'shopName', 'shopInviteCode', 'inviteExpiresAt',
       'activeCustomer', 'isDarkMode', 'fontSizeScale', 'thumbnailScale',
-      'customerView',
+      'customerView', 'inventoryView',
       'cart', 'history', 'products', 'customers', 'productCatalog',
       'catalogCategories', 'catalogVersion', 'syncQueue', 'lastSyncedAt',
     ];
