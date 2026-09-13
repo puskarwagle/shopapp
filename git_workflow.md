@@ -93,11 +93,12 @@ If yes, commit as a separate `[docs]` commit. If none match, say so.
 
 ## GitHub Actions (Android APK build)
 
-Pushing to `main` **automatically** triggers
-`.github/workflows/build-android.yml`, producing a signed debug APK artifact
-named **`shopapp-release-apk`** → `app-release.apk` (downloadable from the
-run's **Artifacts** section). It also runs on PRs to `main` and manual
-"Run workflow". No extra action needed beyond `git push origin main`.
+`.github/workflows/build-android.yml` runs on **manual `workflow_dispatch`
+only** — trigger with `gh workflow run "Build Android APK" --ref main`, or
+Actions tab → Build Android APK → Run workflow. It produces a signed debug
+APK artifact named **`shopapp-release-apk`** → `app-release.apk`
+(downloadable from the run's **Artifacts** section). It does NOT run on push
+or PR.
 
 Build etiquette: don't bump version or re-run builds unless asked; the same
 artifact name is uploaded each run.
