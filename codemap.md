@@ -9,12 +9,14 @@ index.js                      → registerRootComponent(App)
 App.js                        → Root: NavigationContainer + native-stack
   ├─ not logged in            → LoginScreen (skipped when DEV_BYPASS_AUTH: fake dev admin + local shop)
   ├─ logged in, no shop       → ConnectShopScreen (scan QR / enter code / create shop)
-  └─ logged in + has shop     → MainTabs (bottom tab navigator)
-                                + CheckoutScreen (pushed, slide_from_bottom)
-                                + CustomerProfileScreen (pushed, slide_from_bottom)
+   └─ logged in + has shop     → MainTabs (bottom tab navigator)
+                                 + CheckoutScreen (pushed, slide_from_bottom)
+                                 + JournalCheckoutScreen (pushed, slide_from_bottom)
+                                 + CustomerProfileScreen (pushed, slide_from_bottom)
+                                 + ProductProfileScreen (pushed, slide_from_bottom)
 ```
 
-`App.js` defines the tab bar (Customers, Inventory for admins, History, Settings) and conditionally renders the Inventory tab only for admins. Every tab/stack screen is wrapped with the `withInspect` HOC — a dev-only passthrough (returns the original component outside `__DEV__`) that mounts the element-inspect overlay; the `InspectFab` eye button toggles inspect mode. `CheckoutScreen` and `CustomerProfileScreen` are stack screens (not tabs) — `CheckoutScreen` is pushed from the Customers tab when a customer is selected, and `CustomerProfileScreen` is pushed from Checkout or History. The whole app is wrapped in `SafeAreaProvider`; the tab bar and screen headers use safe-area insets.
+`App.js` defines the tab bar (Customers, Inventory for admins, History, Settings) and conditionally renders the Inventory tab only for admins. Every tab/stack screen is wrapped with the `withInspect` HOC — a dev-only passthrough (returns the original component outside `__DEV__`) that mounts the element-inspect overlay; the `InspectFab` eye button toggles inspect mode. `CheckoutScreen`, `JournalCheckoutScreen`, `CustomerProfileScreen`, and `ProductProfileScreen` are stack screens (not tabs) — `CheckoutScreen`/`JournalCheckoutScreen` are pushed from the Customers tab when a customer is selected, `CustomerProfileScreen` is pushed from Checkout/Journal/History, and `ProductProfileScreen` is pushed from Inventory when a product is tapped. The whole app is wrapped in `SafeAreaProvider`; the tab bar and screen headers use safe-area insets. FABs and list padding use `useBottomTabBarHeight()` so content clears the tab bar.
 
 ## Root Files
 
@@ -53,6 +55,7 @@ Single Zustand store (persisted as `shop-app-storage`). Export includes `uid()` 
 - `isDarkMode`, `toggleDarkMode`
 - `fontSizeScale`, `setFontSizeScale` (0.8–1.5)
 - `thumbnailScale`, `setThumbnailScale` (0.5–1.5)
+- `customerView`, `setCustomerView` / `inventoryView`, `setInventoryView` — grid/list layout prefs for Customers/Inventory (persisted via `partialize`)
 - `activeCustomer`, `setActiveCustomer`
 - `history`, `addToHistory` (newest-first, capped at 200)
 - `cart` `{ id, name, price, quantity }`, `addToCart`, `removeFromCart`, `clearCart`
@@ -81,8 +84,10 @@ Single Zustand store (persisted as `shop-app-storage`). Export includes `uid()` 
 | `CustomersScreen.js` | Customer grid + filter + add | Store-backed `customers` (archived rows hidden behind filter); add-customer modal with optional camera/gallery photo; walk-in entry; selecting sets `activeCustomer` → pushes Checkout |
 | `CheckoutScreen.js` | Product grid + cart + checkout | Stack screen (slide_from_bottom); store-backed `products`; tap image to add, red `-` overlay to remove, qty badge, gradient text overlay; back button + customer link → CustomerProfile; summary modal (due amount posts to the customer ledger via `addToCustomerDue`) + success modal; on confirm → `addToHistory` + `pushTransaction` |
 | `CustomerProfileScreen.js` | Customer details + edit + history | Stack screen (slide_from_bottom); pulls `customerId`/`customerName` from route params; shows photo, due, transaction count, total spent, and that customer's filtered `history`; edit mode edits name/due/photo via `updateCustomer`, archive/restore via `deleteCustomer`/`restoreCustomer`, payments via `receivePayment`; works for customers not in the local list (history-only, read caps) |
-| `SettingsScreen.js` | Settings tab | Dark mode, font/thumbnail sliders, shop invite panel (code + QR with countdown), logout |
-| `InventoryScreen.js` | Admin product management | Store-backed `products`; add-product modal with two flows: **Browse Catalog** (category grid → product list → set price/stock) or **Add Custom Product** (name, price, stock, photo via camera/gallery); delete with Alert confirm; fuzzy **smart search** over catalog (by name/brand/subcategory) and over the shop's own inventory via `src/lib/search.js` |
+| `JournalCheckoutScreen.js` | Journal-style line-item checkout | Stack screen (slide_from_bottom); editable item/rate/qty rows with product autocomplete suggestions (name locks once picked); customer card with avatar links to CustomerProfile; footer shows total, deposit, new due; on save → `addToHistory` + `pushTransaction` + `addToCustomerDue` |
+| `ProductProfileScreen.js` | Product details + edit + delete | Stack screen (slide_from_bottom); pulls `productId` from route params; edits name/price/stock/photo via `updateProduct` (photo via camera/gallery applies immediately); shows stock value; delete with confirm → `deleteProduct` + goBack |
+| `SettingsScreen.js` | Settings tab | Dark mode, font/thumbnail sliders, Customers/Inventory grid-list layout selectors, shop invite panel (code + QR with countdown), archived-customers restore, logout |
+| `InventoryScreen.js` | Admin product management | Store-backed `products` with grid/list layout (`inventoryView`); tapping a card/row pushes ProductProfile (edit/delete live there); add-product modal with two flows: **Browse Catalog** (category grid → product list → set price/stock) or **Add Custom Product** (name, price, stock, photo via camera/gallery); fuzzy **smart search** over catalog (by name/brand/subcategory) and over the shop's own inventory via `src/lib/search.js` |
 | `HistoryScreen.js` | Full transaction history | Now a bottom tab; reads `store.history` (merged from local + `transactions` pull); payment entries render as `Payment received` rows; tapping a customer links to CustomerProfile |
 
 ### `src/components/` inspect overlay (dev only)
