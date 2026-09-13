@@ -7,7 +7,7 @@ Directory map and data-flow overview for the Grocery Shop App.
 ```
 index.js                      → registerRootComponent(App)
 App.js                        → Root: NavigationContainer + native-stack
-  ├─ not logged in            → LoginScreen
+  ├─ not logged in            → LoginScreen (skipped when DEV_BYPASS_AUTH: fake dev admin + local shop)
   ├─ logged in, no shop       → ConnectShopScreen (scan QR / enter code / create shop)
   └─ logged in + has shop     → MainTabs (bottom tab navigator)
                                 + CheckoutScreen (pushed, slide_from_bottom)
@@ -41,7 +41,7 @@ Versioning: `app.json` + `package.json` hold the semver `version` (`0.2.1`). Sto
 | File | Purpose |
 | --- | --- |
 | `supabase.js` | Supabase client from `config.js`; exports `isSupabaseConfigured`; `detectSessionInUrl` enabled on web for OAuth redirects |
-| `config.js` | Committed URL + anon key + `GOOGLE_WEB_CLIENT_ID` (public by design; RLS + auth protect data). Not secrets |
+| `config.js` | Committed URL + anon key + `GOOGLE_WEB_CLIENT_ID` (public by design; RLS + auth protect data). Not secrets. Also `DEV_BYPASS_AUTH` (`__DEV__` + `?devbypass=1` or `EXPO_PUBLIC_BYPASS_AUTH=1`): skips login, injects a dev admin + local shop, disables sync |
 | `auth.js` | `configureGoogleSignIn()` — configures native Google SDK; `googleSignIn()` — native ID token or web OAuth redirect (web `redirectTo` = current origin + subpath, so localhost, LAN, and Pages URLs all work); `deriveRole(email)`; `ensureProfile(id, email)` → async lookup/insert of `profiles` row |
 | `search.js` | `createFuse(items, keys)` + `smartSearch(items, query, fuse)` — fuzzy + tier-ranked search (used by InventoryScreen for catalog + inventory) |
 

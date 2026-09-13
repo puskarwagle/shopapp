@@ -67,6 +67,8 @@ npx expo start --web --host lan
 
 Opens on `http://<LAN-IP>:8081` (e.g. `http://192.168.18.22:8081`). Phone and laptop must be on the same WiFi.
 
+To skip Google login in dev, open `http://<LAN-IP>:8081?devbypass=1` (or start with `EXPO_PUBLIC_BYPASS_AUTH=1`). Lands straight in the app as a dev admin with a local "Dev Shop" — data stays on-device, nothing syncs. Dev-only (`__DEV__`); production builds always require real login. Caveats: Browse Catalog won't load (needs a signed-in user), Log Out exits to the real Login screen.
+
 ### Nginx reverse proxy (LAN, optional)
 
 A user-local nginx is compiled at `~/.local/nginx` (no sudo required). It reverse-proxies port 80 → Expo on 8081, giving a clean URL on the LAN.
@@ -159,6 +161,7 @@ One `profiles` row exists per user (auto-created by a trigger — see `supabase/
 - Role comes from the `profiles.role` column (default `'employee'`). Set it to `'admin'` (full access, adds Inventory tab) in Table Editor.
 - If the profile lookup fails (offline/new user), `deriveRole(email)` in `src/lib/auth.js` falls back — email containing `admin` → admin, else employee. Keep `App.js` (`isAdmin = user?.role === 'admin'` + Inventory tab) consistent if role logic changes.
 - If Supabase isn't configured (missing keys in `src/lib/config.js`), login shows an offline mode message.
+- Dev bypass: `DEV_BYPASS_AUTH` in `src/lib/config.js` (on when `__DEV__` + `?devbypass=1` in the URL or `EXPO_PUBLIC_BYPASS_AUTH=1`). `App.js` injects a fake admin user + local `shopId`, skips the Supabase auth listener and `pullAll`; `enqueueSync`/`flushSync` no-op so dev data stays local. Remove the flag to restore the real flow.
 
 ### Google OAuth Setup
 

@@ -58,6 +58,8 @@ npx expo start --web --host lan
 # Phone → http://<your-laptop-ip>:8081
 ```
 
+To skip Google login in dev, open `http://<your-laptop-ip>:8081?devbypass=1` — lands straight in the app as a dev admin with a local on-device shop (nothing syncs). Dev builds only; production always requires real login.
+
 **Optional: nginx reverse proxy** for a cleaner URL (port 8080 → Expo 8081):
 
 ```bash
