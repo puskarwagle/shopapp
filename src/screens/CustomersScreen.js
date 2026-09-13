@@ -5,6 +5,7 @@ import { Search, UserPlus, Camera, Image as ImageIcon, X, LayoutList, LayoutGrid
 import * as ImagePicker from 'expo-image-picker';
 import useStore from '../store/useStore';
 import { useNavigation } from '@react-navigation/native';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import Inspect from '../components/Inspect';
 
 const avatarFallback = (name) =>
@@ -34,6 +35,7 @@ export default function CustomersScreen() {
   const { customers, addCustomer, seedSampleCustomers, backfillSamplePhotos, setActiveCustomer, customerView, setCustomerView, isDarkMode, fontSizeScale } = useStore();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
   const isGrid = customerView === 'grid';
 
   useEffect(() => {
@@ -181,8 +183,8 @@ export default function CustomersScreen() {
           }`}
         >
           {isGrid
-            ? <LayoutGrid size={20} color={isDarkMode ? '#94a3b8' : '#64748b'} />
-            : <LayoutList size={20} color={isDarkMode ? '#94a3b8' : '#64748b'} />}
+            ? <LayoutList size={20} color={isDarkMode ? '#94a3b8' : '#64748b'} />
+            : <LayoutGrid size={20} color={isDarkMode ? '#94a3b8' : '#64748b'} />}
         </TouchableOpacity>
       </View>
 
@@ -192,7 +194,7 @@ export default function CustomersScreen() {
         renderItem={isGrid ? renderGrid : renderRow}
         keyExtractor={item => item.id}
         numColumns={isGrid ? 2 : 1}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={{ paddingBottom: tabBarHeight + 24 }}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View className="items-center pt-16 px-8">
@@ -215,7 +217,8 @@ export default function CustomersScreen() {
 
       <Inspect id="add-customer-btn">
         <TouchableOpacity
-          className="absolute bottom-40 right-6 bg-blue-600 w-14 h-14 rounded-full items-center justify-center shadow-lg"
+          className="absolute right-6 bg-blue-600 w-14 h-14 rounded-full items-center justify-center shadow-lg"
+          style={{ bottom: tabBarHeight + 16 }}
           onPress={() => setShowAddModal(true)}
         >
           <UserPlus size={28} color="white" />
