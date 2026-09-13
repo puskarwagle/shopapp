@@ -397,13 +397,26 @@ const useStore = create(
           (pRes.data || []).forEach(p => productsMap.set(p.id, {
             id: p.id, name: p.name, price: Number(p.price),
             stock: Number(p.stock), image: p.image,
+            shop_id: p.shop_id ?? productsMap.get(p.id)?.shop_id ?? get().shopId,
           }));
 
           const customersMap = new Map(state.customers.map(c => [c.id, c]));
-          (cRes.data || []).forEach(c => customersMap.set(c.id, {
-            id: c.id, name: c.name, image: c.image, due: Number(c.due),
-            is_deleted: !!c.is_deleted,
-          }));
+          // Ids with an unsynced local write: the push hasn't landed yet
+          // (offline, or the is_deleted column missing remotely), so the
+          // local copy wins and a refresh must not resurrect archived rows.
+          const pendingCustomerIds = new Set(
+            state.syncQueue
+              .filter(op => op.table === 'customers' && op.op === 'upsert' && op.row?.id)
+              .map(op => op.row.id)
+          );
+          (cRes.data || []).forEach(c => {
+            const local = customersMap.get(c.id);
+            customersMap.set(c.id, {
+              id: c.id, name: c.name, image: c.image, due: Number(c.due),
+              shop_id: c.shop_id ?? local?.shop_id ?? get().shopId,
+              is_deleted: pendingCustomerIds.has(c.id) ? !!local?.is_deleted : !!c.is_deleted,
+            });
+          });
 
           const histMap = new Map(state.history.map(h => [h.id, h]));
           (tRes.data || []).forEach(t => histMap.set(t.id, {
