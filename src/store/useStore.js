@@ -229,6 +229,44 @@ const useStore = create(
         }));
         return { ok: true, added: fresh.length, skipped: SEED_PRODUCTS.length - fresh.length };
       },
+      // Internal: patches Unsplash faces onto seed-named rows that still
+      // carry the old placeholder (or no) image. Never adds rows, never
+      // touches user-picked photos. Runs silently on app start.
+      backfillSamplePhotos: () => {
+        if (!get().shopId) return { ok: false, refreshed: 0, pruned: 0 };
+        // Prune samples retired by the 12 -> 10 trim. Only untouched rows
+        // (seed name + seed due + seed/placeholder/blank photo) are removed;
+        // anything the user edited or photographed is left alone.
+        const RETIRED = new Map([['sher bahadur rai', 0], ['nirmala limbu', 1980]]);
+        const pruneIds = get().customers
+          .filter(c => {
+            const key = (c.name || '').trim().toLowerCase();
+            if (!RETIRED.has(key) || c.is_deleted) return false;
+            if (Number(c.due) !== RETIRED.get(key)) return false;
+            const img = c.image || '';
+            return img === '' || img.includes('via.placeholder.com')
+              || img.includes('placehold.co') || img.includes('images.unsplash.com/');
+          })
+          .map(c => c.id);
+        if (pruneIds.length > 0) {
+          const ids = new Set(pruneIds);
+          set((state) => ({ customers: state.customers.filter(c => !ids.has(c.id)) }));
+          pruneIds.forEach(id => get().enqueueSync({ table: 'customers', op: 'delete', row: { id } }));
+        }
+        const seedByName = new Map(SEED_CUSTOMERS.map(c => [c.name.trim().toLowerCase(), c]));
+        let refreshed = 0;
+        get().customers.forEach(c => {
+          const seed = seedByName.get((c.name || '').trim().toLowerCase());
+          if (!seed || !seed.image) return;
+          const img = c.image || '';
+          if (img === seed.image) return;
+          if (img === '' || img.includes('via.placeholder.com') || img.includes('placehold.co')) {
+            get().updateCustomer(c.id, { image: seed.image });
+            refreshed += 1;
+          }
+        });
+        return { ok: true, refreshed, pruned: pruneIds.length };
+      },
       seedSampleCustomers: () => {
         if (!get().shopId) return { ok: false, error: 'No shop.' };
         const existing = new Set(get().customers.map(c => (c.name || '').trim().toLowerCase()));
@@ -236,7 +274,8 @@ const useStore = create(
         fresh.forEach(c => get().addCustomer({
           name: c.name, due: c.due, image: c.image,
         }));
-        return { ok: true, added: fresh.length, skipped: SEED_CUSTOMERS.length - fresh.length };
+        const { refreshed, pruned } = get().backfillSamplePhotos();
+        return { ok: true, added: fresh.length, refreshed, pruned, skipped: SEED_CUSTOMERS.length - fresh.length };
       },
       addCustomer: (customer) => {
         if (!get().shopId) return;
