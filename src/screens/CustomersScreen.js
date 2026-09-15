@@ -100,6 +100,8 @@ export default function CustomersScreen() {
           isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'
         }`}
         onPress={() => handleSelectCustomer(item)}
+        onLongPress={() => navigation.navigate('CustomerProfile', { customerId: item.id, customerName: item.name })}
+        delayLongPress={400}
       >
         <View className="flex-1 mr-3">
           <Text
@@ -131,6 +133,8 @@ export default function CustomersScreen() {
           isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'
         }`}
         onPress={() => handleSelectCustomer(item)}
+        onLongPress={() => navigation.navigate('CustomerProfile', { customerId: item.id, customerName: item.name })}
+        delayLongPress={400}
       >
         <Avatar
           uri={item.image}
