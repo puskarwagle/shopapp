@@ -59,6 +59,10 @@ const useStore = create(
         set((state) => ({
           history: [{ ...order, id: order.id || uid(), timestamp: order.timestamp || new Date().toISOString() }, ...state.history].slice(0, 200),
         })),
+      updateHistory: (id, updates) =>
+        set((state) => ({
+          history: state.history.map(h => h.id === id ? { ...h, ...updates } : h),
+        })),
 
       cart: [], // { id, name, price, quantity }
       addToCart: (product) => set((state) => {
