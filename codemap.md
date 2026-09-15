@@ -57,7 +57,7 @@ Single Zustand store (persisted as `shop-app-storage`). Export includes `uid()` 
 - `thumbnailScale`, `setThumbnailScale` (0.5–1.5)
 - `customerView`, `setCustomerView` / `inventoryView`, `setInventoryView` — grid/list layout prefs for Customers/Inventory (persisted via `partialize`)
 - `activeCustomer`, `setActiveCustomer`
-- `history`, `addToHistory` (newest-first, capped at 200)
+- `history`, `addToHistory` (newest-first, capped at 200), `updateHistory(id, updates)` (merges edits into a history entry; local-only, no sync op enqueued)
 - `cart` `{ id, name, price, quantity }`, `addToCart`, `removeFromCart`, `clearCart`
 - `products`, `customers` — DB-backed lists (offline-first); rows always tagged with `shop_id`
 - `productCatalog`, `catalogCategories`, `fetchCatalog()` — global Fasto reference data from `product_catalog` table (read-only for employees, writable by admins)
@@ -81,9 +81,9 @@ Single Zustand store (persisted as `shop-app-storage`). Export includes `uid()` 
 | --- | --- | --- |
 | `LoginScreen.js` | Google Sign-In only | Calls `googleSignIn()` from `auth.js`; on native uses ID token flow, on web uses OAuth redirect; loading + error states; offline message if unconfigured |
 | `ConnectShopScreen.js` | Shop onboarding | Employee scans owner's QR / enters invite code; owner creates a new shop (becomes admin); join calls `supabase.from('shops')` |
-| `CustomersScreen.js` | Customer grid + filter + add | Store-backed `customers` (archived rows hidden behind filter); add-customer modal with optional camera/gallery photo; walk-in entry; selecting sets `activeCustomer` → pushes Checkout |
+| `CustomersScreen.js` | Customer grid + filter + add | Store-backed `customers` (archived rows hidden behind filter); add-customer modal with optional camera/gallery photo; walk-in entry; tap sets `activeCustomer` → pushes Checkout, long-press pushes CustomerProfile |
 | `CheckoutScreen.js` | Product grid + cart + checkout | Stack screen (slide_from_bottom); store-backed `products`; tap image to add, red `-` overlay to remove, qty badge, gradient text overlay; back button + customer link → CustomerProfile; summary modal (due amount posts to the customer ledger via `addToCustomerDue`) + success modal; on confirm → `addToHistory` + `pushTransaction` |
-| `CustomerProfileScreen.js` | Customer details + edit + history | Stack screen (slide_from_bottom); pulls `customerId`/`customerName` from route params; shows photo, due, transaction count, total spent, and that customer's filtered `history`; edit mode edits name/due/photo via `updateCustomer`, archive/restore via `deleteCustomer`/`restoreCustomer`, payments via `receivePayment`; works for customers not in the local list (history-only, read caps) |
+| `CustomerProfileScreen.js` | Customer details + edit + history | Stack screen (slide_from_bottom); pulls `customerId`/`customerName` from route params; shows photo, due, transaction count, total spent, and that customer's filtered `history`; long-press the photo, name, or due to inline-edit via `updateCustomer`, long-press a history row to edit its total/due (`updateHistory`) or payment amount; archive/restore via `deleteCustomer`/`restoreCustomer`, payments via `receivePayment`; works for customers not in the local list (history-only, read caps) |
 | `JournalCheckoutScreen.js` | Journal-style line-item checkout | Stack screen (slide_from_bottom); editable item/rate/qty rows with product autocomplete suggestions (name locks once picked); customer card with avatar links to CustomerProfile; footer shows total, deposit, new due; on save → `addToHistory` + `pushTransaction` + `addToCustomerDue` |
 | `ProductProfileScreen.js` | Product details + edit + delete | Stack screen (slide_from_bottom); pulls `productId` from route params; edits name/price/stock/photo via `updateProduct` (photo via camera/gallery applies immediately); shows stock value; delete with confirm → `deleteProduct` + goBack |
 | `SettingsScreen.js` | Settings tab | Dark mode, font/thumbnail sliders, Customers/Inventory grid-list layout selectors, shop invite panel (code + QR with countdown), archived-customers restore, logout |

@@ -193,7 +193,7 @@ For family/testing: you and Dad both create accounts; one of you creates a shop,
 ## Offline-First Sync (how data flows)
 
 - Source of truth: the Zustand store, persisted to AsyncStorage (key `shop-app-storage`). All reads/writes are local and instant — works fully offline.
-- Every write also enqueues a sync op (`syncQueue`, persisted) and attempts a background `flushSync`; failed ops stay queued and retry on next login/`pullAll`. Customer edits (`updateCustomer`) upsert; `deleteCustomer` archives via an `is_deleted: true` upsert (never a `delete` op — ledger + history stay intact); `restoreCustomer` un-archives.
+- Every write also enqueues a sync op (`syncQueue`, persisted) and attempts a background `flushSync`; failed ops stay queued and retry on next login/`pullAll`. Customer edits (`updateCustomer`) upsert; `deleteCustomer` archives via an `is_deleted: true` upsert (never a `delete` op — ledger + history stay intact); `restoreCustomer` un-archives. Exception: `updateHistory(id, updates)` (history edits from CustomerProfileScreen long-press) is **local-only** — it does not enqueue a sync op, so those edits don't reach the `transactions` table.
 - `pullAll()` (called from `App.js` on login): flushes the queue, then pulls `products`, `customers`, `transactions` from Supabase and merges by `id` into the store. Local winners on conflicts (last write wins).
 - Keys come from `src/lib/config.js` (committed — the URL + anon key are public by design; data protection = RLS + auth). `.env` is only used by local dev/metro and is NOT needed for CI builds.
 
@@ -211,7 +211,7 @@ A global `product_catalog` table (`supabase/migrations/0004_product_catalog.sql`
 
 ## App Structure (see codemap.md)
 
-Entry: `index.js` → `App.js` (stack: Login or Main tabs). Tabs: Customers, History, Settings, and Inventory (admin only). Every screen is wrapped with the `withInspect` HOC (dev-only passthrough; adds the element-inspect overlay, toggled by the `InspectFab` eye button). `CheckoutScreen` and `CustomerProfileScreen` are stack screens pushed on top (slide_from_bottom animation). The app is wrapped in `SafeAreaProvider`; the tab bar and screen headers use safe-area insets. `CustomerProfileScreen` shows/edits a customer (via `updateCustomer`, archive via `deleteCustomer`, payments via `receivePayment`) and their filtered transaction history.
+Entry: `index.js` → `App.js` (stack: Login or Main tabs). Tabs: Customers, History, Settings, and Inventory (admin only). Every screen is wrapped with the `withInspect` HOC (dev-only passthrough; adds the element-inspect overlay, toggled by the `InspectFab` eye button). `CheckoutScreen` and `CustomerProfileScreen` are stack screens pushed on top (slide_from_bottom animation). The app is wrapped in `SafeAreaProvider`; the tab bar and screen headers use safe-area insets. `CustomerProfileScreen` shows/edits a customer (long-press the photo, name, or due to inline-edit via `updateCustomer`; long-press a history row to edit its total/due — local-only `updateHistory`; archive via `deleteCustomer`, payments via `receivePayment`) and their filtered transaction history.
 
 ## Things to Be Careful About
 
