@@ -64,11 +64,10 @@ If `app.json` / `package.json` version or store build numbers changed,
 confirm they were bumped **together** in the same commit (versioning rule in
 AGENTS.md).
 
-### Step 5 — Suggest doc updates
-Check whether docs should be updated to match the change. Read this table
-only (not the docs):
+### Step 5 — Update docs
+Update docs to match the change. Read this table only (not the docs):
 
-| Changed file matches | Suggest updating |
+| Changed file matches | Update |
 |---|---|
 | Any file added/moved/renamed/deleted under `src/`, `fastoextract/`, `.github/`, or root config | `codemap.md` (always) |
 | `src/lib/auth.js`, `src/lib/config.js`, `App.js`, store/sync model, versioning, build instructions | `AGENTS.md` |
@@ -76,8 +75,10 @@ only (not the docs):
 | High-level setup / usage / onboarding flow | `README.md` |
 | This workflow itself changes | `git_workflow.md` |
 
-List candidates with reasons, **ask the user**, never update docs unprompted.
-If yes, commit as a separate `[docs]` commit. If none match, say so.
+When a row matches, update the doc(s) to reflect the change and commit them
+as a separate `[docs]` commit. Only skip if the change is trivial (e.g. a
+fix-up of the previous commit) and nothing meaningful in the docs would
+change. If no row matches, say so.
 
 ## Rules
 - Never use `git add .` / `git add -A` unless every changed file belongs to
@@ -88,7 +89,7 @@ If yes, commit as a separate `[docs]` commit. If none match, say so.
   do not add real private credentials.
 - Never commit unrelated changes together.
 - Ambiguous diffs (generated files, lock files, large binaries): pause and ask.
-- Always ask before committing documentation or media files.
+- Always ask before committing media files; doc updates from Step 5 are committed automatically as a `[docs]` commit.
 - If there is nothing to commit, say so clearly.
 
 ## GitHub Actions (Android APK build)
