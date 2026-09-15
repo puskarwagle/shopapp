@@ -29,7 +29,11 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
-
+        with:
+          api-level: 34
+          build-tools-version: 34.0.0
+          ndk-version: 26.1.10909125
+          
       - name: Generate native Android project
         run: npx expo prebuild --platform android --no-install
 
